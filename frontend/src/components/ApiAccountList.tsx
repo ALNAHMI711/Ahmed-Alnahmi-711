@@ -1,13 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { fetchApiAccounts, testApiAccount } from '../services/apiAccounts'
+import { fetchApiAccounts } from '../services/apiAccounts'
+import ApiAccountTestModal from './ApiAccountTestModal'
 
 export default function ApiAccountList() {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery(['apiAccounts'], fetchApiAccounts)
-  const testMut = useMutation((id: string) => testApiAccount(id), {
-    onSuccess: () => qc.invalidateQueries(['apiAccounts'])
-  })
+  const [selected, setSelected] = useState<any | null>(null)
 
   if (isLoading) return <div>جارٍ التحميل...</div>
 
@@ -24,7 +23,7 @@ export default function ApiAccountList() {
                 <div className="text-xs text-gray-400">مُنشأ: {new Date(acc.created_at).toLocaleString()}</div>
               </div>
               <div className="flex gap-2">
-                <button className="px-3 py-1 bg-gray-700 rounded" onClick={() => testMut.mutate(acc.id)}>
+                <button className="px-3 py-1 bg-gray-700 rounded" onClick={() => setSelected(acc)}>
                   اختبار
                 </button>
                 <button className="px-3 py-1 bg-red-600 rounded">حذف</button>
@@ -33,8 +32,11 @@ export default function ApiAccountList() {
           ))}
         </div>
       )}
-      {testMut.isLoading && <div className="mt-2">جارٍ اختبار الحساب...</div>}
-      {testMut.isError && <div className="mt-2 text-red-400">فشل اختبار الحساب</div>}
+
+      {selected && (
+        <ApiAccountTestModal account={selected} onClose={() => setSelected(null)} />
+      )}
+
     </div>
   )
 }

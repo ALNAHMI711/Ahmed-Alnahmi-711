@@ -1,8 +1,9 @@
 import api from './api'
 
-export async function uploadStrategy(formData: FormData) {
+export async function uploadStrategy(formData: FormData, onUploadProgress?: (ev: ProgressEvent) => void) {
   const r = await api.post('/v1/strategies/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress
   })
   return r.data
 }
