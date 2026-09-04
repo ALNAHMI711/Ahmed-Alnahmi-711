@@ -13,11 +13,13 @@ class SessionMiddleware(BaseHTTPMiddleware):
         # If endpoint set request.state.session_new, create cookie
         if getattr(request.state, "session_new", None):
             new_sid = create_session(request.state.session_new, settings.SESSION_TIMEOUT_MINUTES * 60)
+            # Use ENVIRONMENT to determine secure cookie behavior
+            is_prod = getattr(settings, "ENVIRONMENT", "development").lower() == "production"
             response.set_cookie(
                 key=SESSION_COOKIE_NAME,
                 value=new_sid,
                 httponly=True,
-                secure=False if settings.APP_NAME == "dev" else True,
+                secure=is_prod,  # True فقط في الإنتاج مع TLS
                 samesite="Strict",
                 max_age=settings.SESSION_TIMEOUT_MINUTES * 60,
             )
