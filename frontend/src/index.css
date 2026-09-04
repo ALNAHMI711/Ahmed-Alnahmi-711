@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RTL base */
+:root {
+  --bg: #0f1724;
+  --card: #111827;
+  --muted: #9ca3af;
+  --accent: #06b6d4;
+  --text: #f8fafc;
+}
+html[dir="rtl"] {
+  direction: rtl;
+}
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+.card {
+  background: var(--card);
+  border-radius: .5rem;
+  padding: 1rem;
+}
+
+.bg-accent {
+  background: var(--accent);
+}
