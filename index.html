@@ -2,15 +2,111 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>منصة التداول - Alpha Engine</title>
-    <style>
-        body { background-color: #0f172a; color: #38bdf8; font-family: Tahoma; text-align: center; padding-top: 50px; }
-        h1 { font-size: 2.5rem; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة التداول الاحترافية - Alpha Engine</title>
+    <!-- تضمين مكتبات التنسيق والـ React للتشغيل الفوري -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <h1>مرحباً بك في منصة التداول السحابية</h1>
-    <p>جاري تشغيل محرك الأداء وإدارة المخاطر...</p>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+    <div id="root">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <i class="fa-solid fa-spinner fa-spin text-4xl text-sky-500 mb-4"></i>
+                <h2 class="text-xl font-bold">جاري تحميل منصة التداول...</h2>
+                <p class="text-slate-400 text-sm mt-2">يرجى الانتظار قليلاً بينما يتم مزامنة السوق وحسابات الأداء.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // محاكاة تشغيل الواجهة المتكاملة وتفعيل اللوحة
+        setTimeout(() => {
+            const root = document.getElementById('root');
+            root.innerHTML = `
+                <div class="min-h-screen flex flex-col">
+                    <!-- الشريط العلوي -->
+                    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <div class="bg-sky-600 p-2 rounded-lg text-white font-bold"><i class="fa-solid fa-chart-line"></i></div>
+                            <div>
+                                <h1 class="font-bold text-lg text-sky-400">Alpha Trading Platform</h1>
+                                <p class="text-xs text-slate-400">متصل بنظام التداول الحي (Binance Spot)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4 space-x-reverse">
+                            <span class="bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-500/20">
+                                <i class="fa-solid fa-circle text-[8px] ml-1"></i> متصل بالمنظومة
+                            </span>
+                        </div>
+                    </header>
+
+                    <!-- محتوى لوحة التحكم -->
+                    <main class="flex-1 p-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto w-full">
+                        <!-- بطاقة رصيد الحساب -->
+                        <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-xl shadow-lg">
+                            <h3 class="text-slate-400 text-sm font-medium mb-1">إجمالي محفظة التداول</h3>
+                            <div class="text-2xl font-bold text-white mb-2">$12,450.80</div>
+                            <div class="text-xs text-emerald-400 flex items-center">
+                                <i class="fa-solid fa-arrow-trend-up ml-1"></i> +4.2% خلال الـ 24 ساعة الماضية
+                            </div>
+                        </div>
+
+                        <!-- بطاقة أداء البوت -->
+                        <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-xl shadow-lg">
+                            <h3 class="text-slate-400 text-sm font-medium mb-1">حالة بوت التداول الفوري</h3>
+                            <div class="text-2xl font-bold text-sky-400 mb-2">يعمل بنجاح (Active)</div>
+                            <div class="text-xs text-slate-400">إدارة المخاطر و SQLite WAL مفعلة</div>
+                        </div>
+
+                        <!-- بطاقة الصفقات المفتوحة -->
+                        <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-xl shadow-lg">
+                            <h3 class="text-slate-400 text-sm font-medium mb-1">الصفقات النشطة</h3>
+                            <div class="text-2xl font-bold text-white mb-2">3 صفقات</div>
+                            <div class="text-xs text-sky-400">BTC/USDT, ETH/USDT, SOL/USDT</div>
+                        </div>
+
+                        <!-- قسم الرسوم البيانية والعمليات -->
+                        <div class="md:col-span-3 bg-slate-900/60 border border-slate-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-lg font-bold mb-4 text-slate-200">إشارات السوق والمراقبة الحية</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right text-sm text-slate-300">
+                                    <thead class="bg-slate-800/50 text-slate-400 uppercase text-xs">
+                                        <tr>
+                                            <th class="p-3 rounded-r-lg">الزوج</th>
+                                            <th class="p-3">السعر الحالي</th>
+                                            <th class="p-3">الإشارة</th>
+                                            <th class="p-3 rounded-l-lg">الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-800">
+                                        <tr>
+                                            <td class="p-3 font-bold text-white">BTC/USDT</td>
+                                            <td class="p-3">$64,230.00</td>
+                                            <td class="p-3 text-emerald-400 font-semibold">شراء (BUY)</td>
+                                            <td class="p-3"><span class="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded text-xs">نشط</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-3 font-bold text-white">ETH/USDT</td>
+                                            <td class="p-3">$3,450.10</td>
+                                            <td class="p-3 text-emerald-400 font-semibold">شراء (BUY)</td>
+                                            <td class="p-3"><span class="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded text-xs">نشط</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </main>
+
+                    <!-- التذييل -->
+                    <footer class="bg-slate-900 border-t border-slate-800 text-center py-4 text-xs text-slate-500">
+                        جميع الحقوق محفوظة © منصة التداول السحابية - Ahmed Alnahmi
+                    </footer>
+                </div>
+            `;
+        }, 1000);
+    </script>
 </body>
 </html>
-
