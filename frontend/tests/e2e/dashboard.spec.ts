@@ -1,0 +1,2 @@
+import { expect, test } from '@playwright/test';
+test('Arabic dashboard renders the operational center without mock portfolio values',async({page})=>{await page.goto('/');await expect(page.getByRole('heading',{name:'مركز عمليات التداول'})).toBeVisible();await expect(page.getByText('لا توجد بيانات متاحة حالياً').first()).toBeVisible();await expect(page.getByRole('heading',{name:'حسابات التداول والاتصالات'})).toBeVisible();});

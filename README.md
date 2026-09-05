@@ -1,2 +1,3 @@
 # Ahmed-Alnahmi-711
-موقع
+
+التوثيق العربي الكامل: [README_AR.md](README_AR.md).
