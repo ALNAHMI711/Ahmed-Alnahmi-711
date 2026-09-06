@@ -14,13 +14,17 @@ def bootstrap_admin(db):
     if db.scalar(select(User).limit(1)) is None and settings.first_run_password:
         db.add(User(username=settings.admin_username,password_hash=hasher.hash(settings.first_run_password),role='admin'));db.commit()
 def login(username:str,password:str,response:Response)->dict:
+    if settings.session_cookie_samesite not in {'strict','lax','none'}:
+        raise RuntimeError('SESSION_COOKIE_SAMESITE يجب أن يكون strict أو lax أو none')
+    if settings.session_cookie_samesite == 'none' and settings.environment != 'production':
+        raise RuntimeError('SameSite=None مسموح فقط مع APP_ENV=production وHTTPS')
     with SessionLocal() as db:
         bootstrap_admin(db);user=db.scalar(select(User).where(User.username==username))
         try: valid=bool(user) and hasher.verify(user.password_hash,password)
         except VerifyMismatchError: valid=False
         if not valid: raise HTTPException(401,'بيانات الدخول غير صحيحة')
         raw=token_urlsafe(32);db.add(DbSession(user_id=user.id,token_hash=digest(raw),expires_at=datetime.now(timezone.utc)+timedelta(minutes=settings.session_timeout_minutes)));db.commit()
-        response.set_cookie('session',raw,httponly=True,secure=settings.environment=='production',samesite='strict',max_age=settings.session_timeout_minutes*60)
+        response.set_cookie('session',raw,httponly=True,secure=settings.environment=='production',samesite=settings.session_cookie_samesite,max_age=settings.session_timeout_minutes*60)
         return {'id':user.id,'username':user.username,'role':user.role}
 def current_user(session:str|None=Cookie(default=None)) -> User:
     if not session: raise HTTPException(401,'يلزم تسجيل الدخول')

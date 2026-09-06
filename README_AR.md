@@ -40,7 +40,7 @@ Telegram worker منفصل وتُخزن token مشفرة؛ يدعم الأوام
 بعد ربط remote وتسجيل GitHub CLI، راجع حالة CI ثم نفّذ: `gh pr create --base main --head feature/phase-4-frontend --fill`، وبعد نجاح جميع checks: `gh pr merge feature/phase-4-frontend --squash --delete-branch`.
 
 ## GitHub Pages والاستضافة السحابية
-ينشر workflow `deploy-pages.yml` مجلد `frontend/dist` عند الدمج إلى `main`. فعّل **Settings → Pages → Build and deployment → GitHub Actions**، ثم أضف Repository Variables العامة فقط: `VITE_API_BASE_URL` و`VITE_WS_BASE_URL`. GitHub Pages يستضيف الواجهة الثابتة فقط؛ يجب نشر FastAPI وPostgreSQL على VPS/Vercel/Render/خدمة حاويات منفصلة مع HTTPS وCORS مضبوطين. لا تضع مفاتيح أو كلمات مرور في GitHub Variables العامة أو ملفات Vite.
+ينشر workflow `deploy-pages.yml` مجلد `frontend/dist` عند الدفع إلى `work`. فعّل **Settings → Pages → Build and deployment → GitHub Actions**، ثم أضف Repository Variables العامة فقط: `VITE_API_BASE_URL` و`VITE_WS_BASE_URL`. GitHub Pages يستضيف الواجهة الثابتة فقط؛ يجب نشر FastAPI وPostgreSQL على VPS/خدمة حاويات منفصلة مع HTTPS وCORS مضبوطين. لا تضع مفاتيح أو كلمات مرور في GitHub Variables العامة أو ملفات Vite. عند استضافة الواجهة على `github.io` والـAPI على نطاق مختلف، عيّن `CORS_ORIGINS` بدقة و`APP_ENV=production` و`SESSION_COOKIE_SAMESITE=none`؛ لا تستخدم `*` مع Cookies.
 
 ## Alpha / Profitability Engine
 وحدة `modules/alpha` تضيف كشف النظام السوقي، تقييم الاستراتيجية من بيانات Out-of-Sample، حجم مركز ديناميكي، Walk-Forward، مراقبة تراجع الأداء، وJournal. لا تنفذ صفقة ولا تتجاوز Risk Engine: فشل Daily Loss أو leverage أو spread أو kill switch أو فحص IP يرد حجمًا صفرًا وقرارًا مرفوضًا.

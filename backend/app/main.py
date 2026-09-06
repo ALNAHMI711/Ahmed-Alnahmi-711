@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -8,8 +9,10 @@ from backend.app.database import ApiAccount, AuditLog, SessionLocal, User, init_
 from backend.app.security.crypto import SecretCipher
 from backend.app.services.upload_scan import inspect_upload
 from backend.app.security.guards import live_trading_allowed
-from backend.app.adapters.base import AccountCapabilities
+from backend.app.adapters.base import AccountCapabilities, Market
+from backend.app.adapters.binance import BinanceAdapter, BinanceApiError
 from backend.app.security.auth import admin, current_user, login, logout
+from backend.app.settings import settings
 from signals.parser import parse
 from risk.engine import RiskLimits, evaluate
 ROOT=Path(__file__).parents[2]
@@ -17,6 +20,8 @@ ROOT=Path(__file__).parents[2]
 async def lifecycle(_:FastAPI):
     init_database(); yield
 app=FastAPI(title='Ahmed Alnahmi 711 Trading Platform',docs_url='/api/docs',lifespan=lifecycle)
+if settings.cors_origins:
+    app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=True, allow_methods=['GET','POST','DELETE'], allow_headers=['Content-Type'])
 class SignalBody(BaseModel): message:str=Field(max_length=10000)
 class RiskRequest(BaseModel): daily_loss:float=0; open_positions:int=0; exposure:float=0; position_size:float; leverage:float=1; spread:float=0; slippage:float=0; kill_switch:bool=False
 class LoginBody(BaseModel): username:str=Field(min_length=1,max_length=120); password:str=Field(min_length=1,max_length=512)
@@ -29,6 +34,13 @@ def auth_logout(response:Response,user:User=Depends(current_user)): logout(respo
 def auth_me(user:User=Depends(current_user)): return {'id':user.id,'username':user.username,'role':user.role}
 @app.get('/health')
 def health(): return {'status':'ok','live_trading':'disabled_by_default'}
+@app.get('/api/v1/health')
+def api_health(): return health()
+@app.get('/api/v1/system/public-ip')
+def public_ip(user:User=Depends(admin)):
+    if not settings.public_egress_ip:
+        return {'status':'unavailable','reason':'لم يُضبط عنوان الخروج العام للخادم في PUBLIC_EGRESS_IP.','ip':None}
+    return {'status':'available','ip':settings.public_egress_ip}
 @app.get('/')
 def dashboard(): return FileResponse(ROOT/'frontend'/'dist'/'index.html') if (ROOT/'frontend'/'dist'/'index.html').exists() else FileResponse(ROOT/'frontend'/'index.html')
 @app.post('/api/v1/signals/parse')
@@ -54,8 +66,25 @@ def create_api_account(account:ApiAccountCreate,user:User=Depends(admin)):
         db.add(ApiAccount(name=account.name,market=account.market,encrypted_key=cipher.encrypt(account.api_key),encrypted_secret=cipher.encrypt(account.api_secret)))
         db.add(AuditLog(action='API_ADD',result='SUCCESS'));db.commit()
     return {'status':'saved','message':'حُفظ المفتاح مشفرًا ولن يُعرض السر مرة أخرى.'}
+@app.post('/api/v1/api-accounts/{account_id}/test')
+async def test_api_account(account_id:str,user:User=Depends(admin)):
+    """Verify a stored key from the server; credentials never leave this boundary."""
+    with SessionLocal() as db:
+        account=db.get(ApiAccount,account_id)
+        if not account: raise HTTPException(404,'حساب التداول غير موجود')
+        try:
+            cipher=SecretCipher(); adapter=BinanceAdapter(Market(account.market),cipher.decrypt(account.encrypted_key),cipher.decrypt(account.encrypted_secret))
+            await adapter.test_connection(); capabilities=await adapter.account_capabilities()
+        except (RuntimeError, ValueError, BinanceApiError) as error:
+            account.status='connection_failed';db.add(AuditLog(user_id=user.id,action='API_CONNECTION_TEST',result='FAILED'));db.commit()
+            raise HTTPException(422,str(error)) from error
+        account.status='connected';account.capabilities=str({'trading_enabled':capabilities.trading_enabled,'withdrawal_enabled':capabilities.withdrawal_enabled,'trusted_ip_restriction':capabilities.trusted_ip_restriction});db.add(AuditLog(user_id=user.id,action='API_CONNECTION_TEST',result='SUCCESS'));db.commit()
+    return {'status':'connected','capabilities':{'trading_enabled':capabilities.trading_enabled,'withdrawal_enabled':capabilities.withdrawal_enabled,'trusted_ip_restriction':capabilities.trusted_ip_restriction},'live_allowed':False,'reason':'لا يفعّل اختبار الاتصال التداول الحقيقي؛ يجب التحقق من IP والصلاحيات وسياسة المخاطر.'}
 @app.websocket('/api/v1/ws/notifications')
 async def notifications(socket:WebSocket):
+    try: current_user(socket.cookies.get('session'))
+    except HTTPException:
+        await socket.close(code=4401);return
     await socket.accept();await socket.send_json({'message':'تم الاتصال بقناة التنبيهات الآمنة.'})
     try:
         while True: await socket.receive_text()
