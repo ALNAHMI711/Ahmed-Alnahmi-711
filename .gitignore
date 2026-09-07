@@ -9,3 +9,7 @@ uploads/
 backups/
 .coverage
 .venv/
+
+# Frontend generated/dependency directories
+frontend/node_modules/
+frontend/dist/
