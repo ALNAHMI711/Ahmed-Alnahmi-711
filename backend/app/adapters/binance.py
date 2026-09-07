@@ -5,6 +5,7 @@ from decimal import Decimal
 import hashlib, hmac
 from urllib.parse import urlencode
 import httpx
+from .account import BinanceAccountMixin
 from .base import AccountCapabilities, ExchangeAdapter, Market
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class ExchangePosition:
 def _time(value: int | str) -> datetime: return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc).replace(tzinfo=None)
 def _d(value: object) -> Decimal: return Decimal(str(value))
 
-class BinanceAdapter(ExchangeAdapter):
+class BinanceAdapter(BinanceAccountMixin, ExchangeAdapter):
     """Binance API adapter. API credentials are supplied by the account vault."""
     def __init__(self, market: Market, api_key: str, api_secret: str, client: httpx.AsyncClient | None = None):
         self.market, self.api_key, self.api_secret = market, api_key, api_secret
