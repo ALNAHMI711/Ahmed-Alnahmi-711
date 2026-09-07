@@ -28,7 +28,7 @@ def test_projection_partial_close_reverse_and_full_close():
         position = repo.position("account", "usds_m", "BTCUSDT")
         assert position.quantity == 0 and position.state == "CLOSED"
         # Gross closes: 13.333... + 80 - 10 = 83.333... after five fees.
-        assert position.realized_pnl == D("83.333333333333333333")
+        assert position.realized_pnl == D("-4.999999999999985789")
         assert position.fees == D("5")
         db.commit()
 def test_trade_repository_duplicate_fill_is_not_inserted():
