@@ -69,7 +69,40 @@ class ExchangeOrder(Base):
     status: Mapped[str] = mapped_column(String(24), default="NEW")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class ConditionalOrder(Base):
-    __tablename__='conditional_orders'; __table_args__=(UniqueConstraint('account_id','idempotency_key',name='uq_conditional_request'),)
-    id:Mapped[str]=mapped_column(String(36),primary_key=True,default=_id); account_id:Mapped[str]=mapped_column(String(36),ForeignKey('api_accounts.id'),index=True); position_id:Mapped[str|None]=mapped_column(String(36),ForeignKey('exchange_positions.id'),nullable=True); parent_order_id:Mapped[str|None]=mapped_column(String(36),ForeignKey('exchange_orders.id'),nullable=True)
-    symbol:Mapped[str]=mapped_column(String(32)); market:Mapped[str]=mapped_column(String(32)); kind:Mapped[str]=mapped_column(String(16)); side:Mapped[str]=mapped_column(String(4)); quantity:Mapped[Decimal]=mapped_column(DECIMAL); trigger_price:Mapped[Decimal|None]=mapped_column(DECIMAL,nullable=True); trail_offset:Mapped[Decimal|None]=mapped_column(DECIMAL,nullable=True); status:Mapped[str]=mapped_column(String(24),default='ACTIVE'); idempotency_key:Mapped[str]=mapped_column(String(64)); exchange_order_id:Mapped[str|None]=mapped_column(String(96),nullable=True); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+    __tablename__ = 'conditional_orders'
+    __table_args__ = (UniqueConstraint('account_id','idempotency_key',name='uq_conditional_request'),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
+    account_id: Mapped[str] = mapped_column(String(36), ForeignKey('api_accounts.id'), index=True)
+    position_id: Mapped[str | None] = mapped_column(String(36), ForeignKey('exchange_positions.id'), nullable=True)
+
+    # Idempotency / ownership
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Order definition
+    symbol: Mapped[str] = mapped_column(String(32))
+    market: Mapped[str] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(16))
+    side: Mapped[str] = mapped_column(String(4))
+    quantity: Mapped[Decimal] = mapped_column(DECIMAL)
+
+    # Trigger / trailing
+    trigger_price: Mapped[Decimal | None] = mapped_column(DECIMAL, nullable=True)
+    trail_offset: Mapped[Decimal | None] = mapped_column(DECIMAL, nullable=True)
+    trail_anchor: Mapped[Decimal | None] = mapped_column(DECIMAL, nullable=True)
+    trail_last_mark: Mapped[Decimal | None] = mapped_column(DECIMAL, nullable=True)
+
+    # Execution linkage
+    exchange_order_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+
+    # Lifecycle
+    status: Mapped[str] = mapped_column(String(24), default="ACTIVE")
+    quantity_remaining: Mapped[Decimal | None] = mapped_column(DECIMAL, nullable=True)
+
+    # Diagnostics
+    last_error: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
