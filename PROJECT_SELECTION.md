@@ -10,3 +10,6 @@
 |Erfaniaa/binance-futures-trading-bot|Erfaniaa/binance-futures-trading-bot|غير متحقق|تتحقق عند المراجعة|بنية قديمة محتملة؛ راجع secrets/pickle|لا|مفاهيم فقط|مفاهيم|محدود|REJECTED للإنتاج|
 
 لا يُستخدم صف NEEDS_REVIEW أو REJECTED في Production. لا تعني APPROVED أن استراتيجية مربحة أو أن مفاتيح API آمنة تلقائيًا.
+
+## بوابة الاعتماد
+لا يُدمج أي مشروع خارجي لتنفيذ orders أو Telegram أو backtesting قبل pin لإصدار محدد، فحص CVE/license، واختبارات تكامل على Testnet منفصل. لا يغير هذا السجل بوابات LIVE الموثقة في `IMPLEMENTATION_GAP.md`.

@@ -44,3 +44,6 @@ Telegram worker منفصل وتُخزن token مشفرة؛ يدعم الأوام
 
 ## Alpha / Profitability Engine
 وحدة `modules/alpha` تضيف كشف النظام السوقي، تقييم الاستراتيجية من بيانات Out-of-Sample، حجم مركز ديناميكي، Walk-Forward، مراقبة تراجع الأداء، وJournal. لا تنفذ صفقة ولا تتجاوز Risk Engine: فشل Daily Loss أو leverage أو spread أو kill switch أو فحص IP يرد حجمًا صفرًا وقرارًا مرفوضًا.
+
+## حالة التنفيذ والتحذيرات التشغيلية
+يوجد الآن سجل fills/mراكز durable، reconciliation REST، وWebSocket session-authenticated للأحداث التي تم commit لها فقط. لا يوجد order placement أو Telegram auto-execution أو بيانات حساب بديلة/وهمية. راجع `IMPLEMENTATION_GAP.md` قبل إعداد أي وضع LIVE؛ الخدمات `worker` و`trading-engine` في Compose لا تنفذ تداولًا حتى يضاف scheduler موثوق ومراجَع.

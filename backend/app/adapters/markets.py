@@ -1,8 +1,14 @@
 from .base import ExchangeAdapter, Market
-class SpotAdapter(ExchangeAdapter): market=Market.SPOT
-class CrossMarginAdapter(ExchangeAdapter): market=Market.CROSS_MARGIN
-class IsolatedMarginAdapter(ExchangeAdapter): market=Market.ISOLATED_MARGIN
-class USDSMAdapter(ExchangeAdapter): market=Market.USDS_M
-class COINMAdapter(ExchangeAdapter): market=Market.COIN_M
+from .binance import BinanceAdapter
+class SpotAdapter(BinanceAdapter):
+    def __init__(self, *args, **kwargs): super().__init__(Market.SPOT, *args, **kwargs)
+class CrossMarginAdapter(BinanceAdapter):
+    def __init__(self, *args, **kwargs): super().__init__(Market.CROSS_MARGIN, *args, **kwargs)
+class IsolatedMarginAdapter(BinanceAdapter):
+    def __init__(self, *args, **kwargs): super().__init__(Market.ISOLATED_MARGIN, *args, **kwargs)
+class USDSMAdapter(BinanceAdapter):
+    def __init__(self, *args, **kwargs): super().__init__(Market.USDS_M, *args, **kwargs)
+class COINMAdapter(BinanceAdapter):
+    def __init__(self, *args, **kwargs): super().__init__(Market.COIN_M, *args, **kwargs)
 class AlphaAdapter(ExchangeAdapter): market=Market.ALPHA
 class StockAdapter(ExchangeAdapter): market=Market.STOCKS

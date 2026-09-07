@@ -1,30 +1,54 @@
 services:
   api:
     build: .
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
     env_file: .env
-    depends_on: [postgres, redis]
+    environment: {DATABASE_URL: postgresql://trading:${POSTGRES_PASSWORD}@postgres:5432/trading}
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+    healthcheck: {test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"], interval: 30s, timeout: 5s, retries: 3}
     restart: unless-stopped
+    networks: [private]
+  worker:
+    build: .
+    command: python -m backend.app.worker
+    env_file: .env
+    environment: {DATABASE_URL: postgresql://trading:${POSTGRES_PASSWORD}@postgres:5432/trading}
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+    restart: unless-stopped
+    networks: [private]
+  trading-engine:
+    build: .
+    command: python -m backend.app.worker --role trading-engine
+    env_file: .env
+    environment: {DATABASE_URL: postgresql://trading:${POSTGRES_PASSWORD}@postgres:5432/trading}
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+    restart: unless-stopped
+    networks: [private]
+  frontend:
+    image: node:22-alpine
+    working_dir: /app/frontend
+    volumes: [./frontend:/app/frontend:ro]
+    command: sh -c "npm ci && npm run build && npx serve -s dist -l 3000"
     networks: [private]
   postgres:
     image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: trading
-      POSTGRES_USER: trading
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set-in-env}
+    environment: {POSTGRES_DB: trading, POSTGRES_USER: trading, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set-in-env}"}
     volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U trading -d trading"], interval: 10s, timeout: 5s, retries: 5}
     restart: unless-stopped
     networks: [private]
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     volumes: [redis-data:/data]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 5}
     restart: unless-stopped
     networks: [private]
   caddy:
     image: caddy:2-alpine
     ports: ["80:80", "443:443"]
     volumes: [./deploy/Caddyfile:/etc/caddy/Caddyfile:ro, caddy-data:/data]
-    depends_on: [api]
+    depends_on: {api: {condition: service_healthy}, frontend: {condition: service_started}}
     restart: unless-stopped
     networks: [private]
 volumes: {postgres-data: {}, redis-data: {}, caddy-data: {}}

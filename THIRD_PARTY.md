@@ -10,3 +10,6 @@
 |binance-futures-trading-bot|https://github.com/Erfaniaa/binance-futures-trading-bot|غير متحقق أثناء التدقيق|غير مستخدم|Erfaniaa|مرجع مفاهيم فقط|لا يوجد|مرفوض للإنتاج إلى أن تتحقق الرخصة|
 
 > لا تضف تبعية أو كودًا خارجيًا قبل مراجعة LICENSE، المصدر، الأمان، والاختبارات وتحديث هذا السجل.
+
+## سجل التنفيذ الحالي
+يستخدم `httpx` وSQLAlchemy وFastAPI كتبعيات معلنة في `requirements.txt`. لا يوجد SDK Binance أو Telegram مدمج؛ REST requests مكتوبة داخل adapter لتقليل سطح الاعتماد، ويجب تدقيق أي SDK جديد وترخيصه قبل إضافته.

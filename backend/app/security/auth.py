@@ -8,6 +8,7 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from backend.app.database import DbSession, SessionLocal, User
 from backend.app.settings import settings
+from backend.app.security.web import csrf_token
 hasher=PasswordHasher()
 def digest(value:str)->str:return sha256(value.encode()).hexdigest()
 def bootstrap_admin(db):
@@ -21,6 +22,7 @@ def login(username:str,password:str,response:Response)->dict:
         if not valid: raise HTTPException(401,'بيانات الدخول غير صحيحة')
         raw=token_urlsafe(32);db.add(DbSession(user_id=user.id,token_hash=digest(raw),expires_at=datetime.now(timezone.utc)+timedelta(minutes=settings.session_timeout_minutes)));db.commit()
         response.set_cookie('session',raw,httponly=True,secure=settings.environment=='production',samesite='strict',max_age=settings.session_timeout_minutes*60)
+        response.set_cookie('csrf', csrf_token(), httponly=False, secure=settings.environment=='production', samesite='strict', max_age=settings.session_timeout_minutes*60)
         return {'id':user.id,'username':user.username,'role':user.role}
 def current_user(session:str|None=Cookie(default=None)) -> User:
     if not session: raise HTTPException(401,'يلزم تسجيل الدخول')
@@ -38,4 +40,4 @@ def logout(response:Response,session:str|None=Cookie(default=None))->None:
         with SessionLocal() as db:
             record=db.scalar(select(DbSession).where(DbSession.token_hash==digest(session)))
             if record:record.revoked_at=datetime.now(timezone.utc);db.commit()
-    response.delete_cookie('session')
+    response.delete_cookie('session'); response.delete_cookie('csrf')
