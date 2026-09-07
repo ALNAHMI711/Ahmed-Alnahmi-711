@@ -22,4 +22,12 @@ class AuditLog(Base):
 def _url()->str: return settings.database_url.replace('postgresql://','postgresql+psycopg://')
 engine=create_engine(_url(), pool_pre_ping=True)
 SessionLocal=sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
-def init_database()->None: Base.metadata.create_all(engine)
+def init_database()->None:
+    # Register execution models before create_all for development SQLite deployments.
+    import backend.app.execution.models  # noqa: F401
+    Base.metadata.create_all(engine)
+class KillSwitch(Base):
+    __tablename__='kill_switches'; id:Mapped[str]=mapped_column(String(32),primary_key=True,default='global'); enabled:Mapped[bool]=mapped_column(Boolean,default=False); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow); updated_by:Mapped[str|None]=mapped_column(String(36),nullable=True)
+
+class ApiAccountOwner(Base):
+    __tablename__='api_account_owners'; account_id:Mapped[str]=mapped_column(String(36),ForeignKey('api_accounts.id'),primary_key=True); user_id:Mapped[str]=mapped_column(String(36),ForeignKey('users.id'),primary_key=True)
