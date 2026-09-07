@@ -68,3 +68,23 @@ def test_conditional_plan_rejects_bad_kind_and_duplicate_key():
   repo=ConditionalOrderRepository(db)
   plan=ConditionalOrder(account_id='account',market='usds_m',symbol='BTCUSDT',kind='TP1',side='SELL',quantity=D('1'),trigger_price=D('110'),idempotency_key='tp-1')
   assert repo.create_once(plan)[1]; assert not repo.create_once(plan)[1]
+
+
+def test_apply_fill_records_net_realized_pnl_on_trade():
+    sessions = setup()
+
+    with sessions() as db:
+        repo = ProjectionRepository(db)
+
+        opening = fill("pnl-1", "BUY", "1", "100", "1")
+        closing = fill("pnl-2", "SELL", "1", "120", "2")
+
+        apply_fill(repo, opening)
+        apply_fill(repo, closing)
+
+        assert opening.realized_pnl == D("-1")
+        assert closing.realized_pnl == D("18")
+
+        position = repo.position("account", "usds_m", "BTCUSDT")
+        assert position.realized_pnl == D("17")
+        assert position.fees == D("3")

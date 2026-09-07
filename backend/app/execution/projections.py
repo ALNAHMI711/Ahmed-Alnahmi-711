@@ -31,7 +31,10 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
         if new_qty == ZERO: position.average_entry_price = None
         elif new_qty * old_qty < ZERO: position.average_entry_price = fill.price
     position.quantity = new_qty
-    position.realized_pnl += realized - fill.fee
+    # Persist the net PnL attributable to this individual confirmed fill.
+    # Position.realized_pnl remains the cumulative projection.
+    fill.realized_pnl = realized - fill.fee
+    position.realized_pnl += fill.realized_pnl
     position.fees += fill.fee
     position.state = _state(new_qty)
     position.version += 1
