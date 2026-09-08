@@ -88,7 +88,8 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
         params = {**(params or {}), "timestamp": int(datetime.now(tz=timezone.utc).timestamp() * 1000), "recvWindow": 5000}
         query = urlencode(params)
         signature = hmac.new(self.api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
-        response = await self.client.get(self.base_url + path, params={**params, "signature": signature}, headers={"X-MBX-APIKEY": self.api_key})
+        request_params = cast(dict[str, str | int | float | bool | None], {**params, "signature": signature})
+        response = await self.client.get(self.base_url + path, params=request_params, headers={"X-MBX-APIKEY": self.api_key})
         response.raise_for_status()
         return response.json()
 
@@ -150,7 +151,8 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
         params.update(timestamp=int(datetime.now(tz=timezone.utc).timestamp() * 1000), recvWindow=5000)
         query = urlencode(params)
         signature = hmac.new(self.api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
-        response = await self.client.post(self.base_url + path, params={**params, "signature": signature}, headers={"X-MBX-APIKEY": self.api_key})
+        request_params = cast(dict[str, str | int | float | bool | None], {**params, "signature": signature})
+        response = await self.client.post(self.base_url + path, params=request_params, headers={"X-MBX-APIKEY": self.api_key})
         response.raise_for_status()
         return _object(response.json())
 
@@ -180,6 +182,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
         params.update(timestamp=int(datetime.now(tz=timezone.utc).timestamp() * 1000), recvWindow=5000)
         query = urlencode(params)
         signature = hmac.new(self.api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
-        response = await self.client.delete(self.base_url + path, params={**params, "signature": signature}, headers={"X-MBX-APIKEY": self.api_key})
+        request_params = cast(dict[str, str | int | float | bool | None], {**params, "signature": signature})
+        response = await self.client.delete(self.base_url + path, params=request_params, headers={"X-MBX-APIKEY": self.api_key})
         response.raise_for_status()
         return _object(response.json())
