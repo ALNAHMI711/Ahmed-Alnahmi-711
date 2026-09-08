@@ -35,8 +35,8 @@ def test_spot_equity_values_free_and_locked_balances_with_real_prices():
         assert request.url.params["symbol"] == "BTCUSDT"
         return httpx.Response(200, json={"price": "50000"})
     result = asyncio.run(adapter(Market.SPOT, handler).account_equity())
-    assert result.equity == Decimal("30110")
-    assert result.available == Decimal("25100")
+    assert result.equity == Decimal(30110)
+    assert result.available == Decimal(25100)
 
 
 def test_cross_margin_uses_net_asset_btc_and_btc_usdt_price():
@@ -48,8 +48,8 @@ def test_cross_margin_uses_net_asset_btc_and_btc_usdt_price():
         assert request.url.path == "/api/v3/ticker/price"
         return httpx.Response(200, json={"price": "50000"})
     result = asyncio.run(adapter(Market.CROSS_MARGIN, handler).account_equity())
-    assert result.equity == Decimal("1000")
-    assert result.available == Decimal("750")
+    assert result.equity == Decimal(1000)
+    assert result.available == Decimal(750)
 
 
 def test_isolated_margin_requests_symbol_and_values_net_assets():
@@ -64,8 +64,8 @@ def test_isolated_margin_requests_symbol_and_values_net_assets():
             return httpx.Response(200, json={"price": "50000"})
         return httpx.Response(404)
     result = asyncio.run(adapter(Market.ISOLATED_MARGIN, handler).account_equity("BTCUSDT"))
-    assert result.equity == Decimal("5250")
-    assert result.available == Decimal("5250")
+    assert result.equity == Decimal(5250)
+    assert result.available == Decimal(5250)
 
 
 def test_fills_preserve_exchange_fee_and_realized_pnl_without_network():
@@ -81,4 +81,4 @@ def test_fills_preserve_exchange_fee_and_realized_pnl_without_network():
     assert result[0].trade_id == "7"
     assert result[0].fee == Decimal("1.5")
     assert result[0].fee_asset == "USDT"
-    assert result[0].realized_pnl == Decimal("120")
+    assert result[0].realized_pnl == Decimal(120)
