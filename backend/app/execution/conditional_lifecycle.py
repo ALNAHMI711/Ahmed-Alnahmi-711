@@ -3,12 +3,15 @@ from decimal import Decimal
 
 ACTIVE = "ACTIVE"
 SUBMITTED = "SUBMITTED"
+PARTIALLY_FILLED = "PARTIALLY_FILLED"
 FILLED = "FILLED"
 CANCELED = "CANCELED"
 REJECTED = "REJECTED"
 EXPIRED = "EXPIRED"
+UNKNOWN = "UNKNOWN"
 
 TERMINAL = frozenset({FILLED, CANCELED, REJECTED, EXPIRED})
+RECONCILE_REQUIRED = frozenset({SUBMITTED, PARTIALLY_FILLED, UNKNOWN})
 
 
 def sibling_action(*, filled_quantity: Decimal, position_quantity: Decimal, sibling_status: str) -> str:
@@ -19,7 +22,7 @@ def sibling_action(*, filled_quantity: Decimal, position_quantity: Decimal, sibl
     """
     if filled_quantity <= 0 or position_quantity < 0:
         raise ValueError("invalid lifecycle quantities")
-    if sibling_status not in {ACTIVE, SUBMITTED}:
+    if sibling_status not in {ACTIVE, SUBMITTED, PARTIALLY_FILLED, UNKNOWN}:
         return "NOOP"
     if position_quantity == 0:
         return "CANCEL_SIBLING"
@@ -30,10 +33,10 @@ def sibling_action(*, filled_quantity: Decimal, position_quantity: Decimal, sibl
 
 def restart_action(status: str, exchange_order_id: str | None) -> str:
     """Never resubmit an ambiguous conditional order after restart."""
-    if status == SUBMITTED and not exchange_order_id:
-        return "RECONCILE_BEFORE_ACTION"
     if status == ACTIVE:
         return "RECONCILE_PLAN"
+    if status in RECONCILE_REQUIRED:
+        return "RECONCILE_BEFORE_ACTION"
     if status in TERMINAL:
         return "NOOP"
     raise ValueError("unknown conditional order state")
