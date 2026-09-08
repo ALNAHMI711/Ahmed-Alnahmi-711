@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import httpx
 import pytest
-
 from backend.app.adapters.market_depth import BookLevel, OrderBook
 from backend.app.adapters.markets import (
     COINMAdapter,
