@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
+
+import httpx
 
 from .base import Market
-
-if TYPE_CHECKING:
-    import httpx
 
 
 class _DepthContext(Protocol):
