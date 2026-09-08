@@ -76,7 +76,7 @@ class ReconciliationWorker:
                 try:
                     remote = await adapter.order_status(symbol, order_id=plan.exchange_order_id)
                 except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
-                    logger.warning("conditional status reconciliation failed for %s", plan.exchange_order_id, error, exc_info=True)
+                    logger.warning("conditional status reconciliation failed for %s: %s", plan.exchange_order_id, error, exc_info=True)
                     plan.status = "UNKNOWN"
                     continue
                 status = remote.get("status")
