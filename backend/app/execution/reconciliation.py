@@ -1,9 +1,11 @@
 """Reconcile exchange facts into durable projections; fail closed on ambiguity."""
+import logging
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
-import logging
+
 import httpx
 from sqlalchemy import select
+
 from backend.app.adapters.binance import BinanceAdapter
 from .models import ConditionalOrder, ExchangeOrder, Trade
 from .projections import apply_fill, apply_mark
@@ -37,7 +39,7 @@ class ReconciliationWorker:
             if snapshot is not None:
                 position.quantity, position.average_entry_price = snapshot.quantity, snapshot.entry_price
                 position.mark_price, position.unrealized_pnl = snapshot.mark_price, snapshot.unrealized_pnl
-                position.state = "CLOSED" if snapshot.quantity == Decimal("0") else "OPEN"
+                position.state = "CLOSED" if snapshot.quantity == Decimal(0) else "OPEN"
                 position.version += 1
             else:
                 apply_mark(position, mark)
