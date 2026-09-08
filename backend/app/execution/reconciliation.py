@@ -1,4 +1,4 @@
-"""Reconcile Binance REST facts into durable execution and conditional projections."""
+"""Reconcile Binance REST facts into the durable projection layer."""
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from sqlalchemy import select
@@ -14,6 +14,7 @@ class ReconciliationWorker:
         self.session_factory, self.adapter_factory, self.publish = session_factory, adapter_factory, publish
 
     async def reconcile(self, account_id: str, market: str, symbol: str, start_time: int | None = None) -> None:
+        """Safe after restart/reconnect. Events are emitted strictly after commit."""
         adapter: BinanceAdapter = self.adapter_factory(account_id, market)
         fills, funding, snapshots, mark = await self._sources(adapter, symbol, start_time)
         emitted: list[tuple[str, dict]] = []
@@ -32,36 +33,56 @@ class ReconciliationWorker:
             if snapshot is not None:
                 position.quantity, position.average_entry_price = snapshot.quantity, snapshot.entry_price
                 position.mark_price, position.unrealized_pnl = snapshot.mark_price, snapshot.unrealized_pnl
-                position.state = "CLOSED" if snapshot.quantity == Decimal("0") else "OPEN"
-                position.version += 1
+                position.state = "CLOSED" if snapshot.quantity == Decimal("0") else "OPEN"; position.version += 1
             else:
                 apply_mark(position, mark)
+
+            # Exchange-confirmed lifecycle. Ambiguous status never mutates local state.
             for order in db.scalars(select(ExchangeOrder).where(ExchangeOrder.account_id == account_id, ExchangeOrder.market == market, ExchangeOrder.symbol == symbol)):
                 try:
                     remote = await adapter.order_status(symbol, order_id=order.exchange_order_id, client_order_id=None if order.exchange_order_id else order.client_request_id)
-                    orders.update_status(order, remote["status"], str(remote.get("orderId")) if remote.get("orderId") is not None else None)
+                    remote_status = remote["status"]
+                    orders.update_status(order, remote_status, str(remote.get("orderId")) if remote.get("orderId") is not None else None)
+                    if remote_status == "FILLED":
+                        await self._reconcile_exit_siblings(db, adapter, order, position, emitted)
                 except Exception:
-                    continue
-            # Conditional exits are advanced only from an exchange-confirmed order status.
-            for plan in db.scalars(select(ConditionalOrder).where(ConditionalOrder.account_id == account_id, ConditionalOrder.market == market, ConditionalOrder.symbol == symbol, ConditionalOrder.status == 'SUBMITTED')):
-                if not plan.exchange_order_id:
-                    continue
-                try:
-                    remote = await adapter.order_status(symbol, order_id=plan.exchange_order_id, client_order_id=None)
-                    status = remote.get('status')
-                    if status == 'FILLED':
-                        plan.status = 'FILLED'
-                        emitted.append(("conditional_exit", {"account_id": account_id, "symbol": symbol, "plan_id": plan.id, "status": "FILLED"}))
-                    elif status in {'CANCELED', 'REJECTED', 'EXPIRED'}:
-                        plan.status = status
-                        emitted.append(("conditional_exit", {"account_id": account_id, "symbol": symbol, "plan_id": plan.id, "status": status}))
-                except Exception:
+                    # A transient status/cancel lookup never fabricates a lifecycle transition.
                     continue
             db.commit()
             emitted.append(("position", {"account_id": account_id, "symbol": symbol, "quantity": str(position.quantity), "realized_pnl": str(position.realized_pnl), "unrealized_pnl": str(position.unrealized_pnl) if position.unrealized_pnl is not None else None}))
         if self.publish:
             for event_type, payload in emitted:
                 await self.publish(event_type, payload)
+
+    async def _reconcile_exit_siblings(self, db, adapter: BinanceAdapter, filled_order: ExchangeOrder, position, emitted: list[tuple[str, dict]]) -> None:
+        """Cancel only excess sibling protection, and only after Binance confirms cancellation.
+
+        Partial fills do not trigger a blind replacement. If an active/submitted sibling
+        protects more than the reconciled remaining position, it is canceled first; a
+        subsequent Risk-approved plan must create the replacement protection.
+        """
+        plan = db.scalar(select(ConditionalOrder).where(ConditionalOrder.parent_order_id == filled_order.id))
+        if plan is None or plan.position_id is None:
+            return
+        siblings = list(db.scalars(select(ConditionalOrder).where(
+            ConditionalOrder.position_id == plan.position_id,
+            ConditionalOrder.id != plan.id,
+            ConditionalOrder.status.in_(["ACTIVE", "SUBMITTED"]),
+        )))
+        remaining = abs(position.quantity)
+        for sibling in siblings:
+            if remaining != 0 and sibling.quantity <= remaining:
+                continue
+            if sibling.exchange_order_id is None:
+                sibling.status = "CANCELED" if remaining == 0 else "REJECTED"
+                continue
+            try:
+                cancel_response = await adapter.cancel_order(symbol=sibling.symbol, order_id=sibling.exchange_order_id)
+            except Exception:
+                continue
+            if cancel_response.get("status") == "CANCELED":
+                sibling.status = "CANCELED"
+                emitted.append(("execution", {"account_id": filled_order.account_id, "symbol": sibling.symbol, "event": "sibling_protection_canceled", "conditional_id": sibling.id}))
 
     async def _sources(self, adapter: BinanceAdapter, symbol: str, start_time: int | None):
         return await adapter.fills(symbol, start_time), await adapter.funding(symbol, start_time), await adapter.positions(), await adapter.mark_price(symbol)
