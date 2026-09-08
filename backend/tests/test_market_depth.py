@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 import pytest
-
 from app.adapters.base import Market
 from app.adapters.market_depth import BinanceMarketDepthMixin, BookLevel, OrderBook
 
