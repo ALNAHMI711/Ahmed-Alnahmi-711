@@ -11,10 +11,10 @@ jobs:
       - run: pip install -r requirements.txt pytest ruff mypy pip-audit
       - run: python -m compileall backend execution tests
       - name: Run execution safety tests
-        run: pytest -q tests/test_reconciliation_races.py tests/test_conditional_risk_reconciliation.py tests/test_tp_sl_reconciliation_safety.py tests/test_tp_sl_mapping.py
+        run: PYTHONPATH=. python -m pytest -q tests/test_reconciliation_races.py tests/test_conditional_risk_reconciliation.py tests/test_tp_sl_reconciliation_safety.py tests/test_tp_sl_mapping.py
       - run: ruff check backend modules risk signals tests
       - run: mypy --ignore-missing-imports backend
-      - run: pytest -q
+      - run: PYTHONPATH=. python -m pytest -q
       - run: pip-audit -r requirements.txt
       - run: docker build .
   frontend:
