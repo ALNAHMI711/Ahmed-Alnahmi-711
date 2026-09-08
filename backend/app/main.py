@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import asyncio
 from pathlib import Path
+from typing import Annotated
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -18,6 +20,9 @@ from backend.app.execution.signal_execution import submit_signal
 from backend.app.security.web import RateLimiter, require_csrf
 from signals.parser import parse
 from risk.engine import RiskLimits, evaluate
+
+CurrentUser = Annotated[User, Depends(current_user)]
+AdminUser = Annotated[User, Depends(admin)]
 ROOT=Path(__file__).parents[2]
 @asynccontextmanager
 async def lifecycle(_:FastAPI): init_database(); yield
@@ -39,9 +44,9 @@ class ApiAccountCreate(BaseModel): name:str=Field(min_length=1,max_length=120); 
 @app.post('/api/v1/auth/login')
 def auth_login(body:LoginBody,response:Response): return login(body.username,body.password,response)
 @app.post('/api/v1/auth/logout',status_code=204)
-def auth_logout(response:Response,user:User=Depends(current_user)): logout(response)
+def auth_logout(response:Response,user:CurrentUser): logout(response)
 @app.get('/api/v1/auth/me')
-def auth_me(user:User=Depends(current_user)): return {'id':user.id,'username':user.username,'role':user.role}
+def auth_me(user:CurrentUser): return {'id':user.id,'username':user.username,'role':user.role}
 @app.get('/health')
 def health(): return {'status':'ok','live_trading':'disabled_by_default'}
 @app.get('/')
@@ -51,11 +56,11 @@ def parse_signal(body:SignalBody):
     try:return parse(body.message).__dict__
     except ValueError as error:raise HTTPException(422,str(error))
 @app.post('/api/v1/strategies/scan')
-async def scan_strategy(file:UploadFile,user:User=Depends(admin)):return inspect_upload(file.filename or '',await file.read())
+async def scan_strategy(file:UploadFile,user:AdminUser):return inspect_upload(file.filename or '',await file.read())
 @app.post('/api/v1/risk/evaluate')
-def risk_check(body:RiskRequest,user:User=Depends(current_user)):return evaluate(RiskLimits(100,.2,3,1000,500,3,.002,.003),**body.model_dump()).__dict__
+def risk_check(body:RiskRequest,user:CurrentUser):return evaluate(RiskLimits(100,.2,3,1000,500,3,.002,.003),**body.model_dump()).__dict__
 @app.get('/api/v1/live-readiness')
-def live_readiness(user:User=Depends(current_user)):
+def live_readiness(user:CurrentUser):
     allowed,reason=live_trading_allowed(AccountCapabilities(True,False,False),(),'LIVE'); return {'allowed':allowed,'reason':reason}
 def _market(value:str)->Market:
     try:return Market(value)
@@ -97,10 +102,10 @@ async def _exchange_data(account:ApiAccount,kind:str,symbol:str|None=None):
         if kind=='market':
             if not symbol:return {'status':'unavailable','reason':'حدد رمزًا للحصول على بيانات السوق المؤكدة','data':[]}
             book=await adapter.order_book(symbol); return {'status':'ok','data':{'symbol':symbol,'bid':str(book.best_bid),'ask':str(book.best_ask),'spread':str(book.spread),'spread_bps':str(book.spread_bps),'source':'binance_depth'}}
-    except Exception as error:return {'status':'unavailable','reason':f'تعذر الحصول على بيانات Binance المؤكدة: {type(error).__name__}','data':None if kind=='portfolio' else []}
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:return {'status':'unavailable','reason':f'تعذر الحصول على بيانات Binance المؤكدة: {type(error).__name__}','data':None if kind=='portfolio' else []}
     raise HTTPException(404,'مصدر البيانات غير معروف')
 @app.get('/api/v1/api-accounts')
-def list_api_accounts(user:User=Depends(current_user)):
+def list_api_accounts(user:CurrentUser):
     with SessionLocal() as db:
         query=select(ApiAccount)
         if user.role!='admin':
@@ -108,7 +113,7 @@ def list_api_accounts(user:User=Depends(current_user)):
             query=query.join(ApiAccountOwner,ApiAccountOwner.account_id==ApiAccount.id).where(ApiAccountOwner.user_id==user.id)
         return [{'id':a.id,'name':a.name,'market':a.market,'enabled':a.enabled,'status':a.status,'ip_restriction':a.ip_restriction,'capabilities':a.capabilities,'last_check':None} for a in db.scalars(query).all()]
 @app.post('/api/v1/api-accounts',status_code=201)
-def create_api_account(account:ApiAccountCreate,user:User=Depends(admin)):
+def create_api_account(account:ApiAccountCreate,user:AdminUser):
     try:cipher=SecretCipher()
     except RuntimeError as error:raise HTTPException(503,str(error))
     with SessionLocal() as db:
@@ -116,25 +121,25 @@ def create_api_account(account:ApiAccountCreate,user:User=Depends(admin)):
         db.add(ApiAccount(name=account.name,market=account.market,encrypted_key=cipher.encrypt(account.api_key),encrypted_secret=cipher.encrypt(account.api_secret))); db.add(AuditLog(action='API_ADD',result='SUCCESS')); db.commit()
     return {'status':'saved','message':'حُفظ المفتاح مشفرًا ولن يُعرض السر مرة أخرى.'}
 @app.get('/api/v1/portfolio')
-async def portfolio(account_id:str|None=None,user:User=Depends(current_user)):
+async def portfolio(account_id:str|None=None,user:CurrentUser=None):
     try:return await _exchange_data(_selected_account(user,account_id),'portfolio')
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':None}
 @app.get('/api/v1/positions')
-async def positions(account_id:str|None=None,symbol:str|None=None,user:User=Depends(current_user)):
+async def positions(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
     try:return await _exchange_data(_selected_account(user,account_id),'positions',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/orders')
-async def orders(account_id:str|None=None,symbol:str|None=None,user:User=Depends(current_user)):
+async def orders(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
     try:return await _exchange_data(_selected_account(user,account_id),'orders',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/market-data')
-async def market_data(account_id:str|None=None,symbol:str|None=None,user:User=Depends(current_user)):
+async def market_data(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
     try:return await _exchange_data(_selected_account(user,account_id),'market',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/alpha/snapshot')
-def alpha_snapshot(user:User=Depends(current_user)):return {'status':'unavailable','reason':'لا توجد نتيجة Alpha تشغيلية مسجلة','data':None}
+def alpha_snapshot(user:CurrentUser):return {'status':'unavailable','reason':'لا توجد نتيجة Alpha تشغيلية مسجلة','data':None}
 @app.post('/api/v1/kill-switch')
-def kill_switch(enabled:bool,user:User=Depends(admin)):
+def kill_switch(enabled:bool,user:AdminUser):
     with SessionLocal() as db:
         state=db.get(KillSwitch,'global') or KillSwitch(id='global'); state.enabled,state.updated_by=enabled,user.id; db.add(state); db.add(AuditLog(user_id=user.id,action='KILL_SWITCH_ON' if enabled else 'KILL_SWITCH_OFF',result='SUCCESS')); db.commit()
     return {'enabled':enabled,'message':'يمنع أو يسمح بالأوامر الجديدة فقط؛ لا يغلق المراكز تلقائيًا.'}
@@ -152,10 +157,10 @@ async def notifications(socket:WebSocket):
             else:return
     except WebSocketDisconnect:dispatcher._connections.discard(connection)
 @app.post('/api/v1/signals/execute',status_code=201)
-async def execute_signal(body:SignalExecution,user:User=Depends(current_user)):
+async def execute_signal(body:SignalExecution,user:CurrentUser):
     try:
         with SessionLocal() as db:return await submit_signal(db,user,account_id=body.account_id,client_request_id=body.client_request_id,message=body.message,confirmed=body.confirmed,policy_enabled=body.policy_enabled, risk=body.model_dump())
     except ValueError as error:raise HTTPException(422,str(error))
 @app.post('/api/v1/orders/manual',status_code=201)
-async def manual_order(body:ManualOrder,user:User=Depends(current_user)):
+async def manual_order(body:ManualOrder,user:CurrentUser):
     with SessionLocal() as db:return await submit_manual(db,user,body)
