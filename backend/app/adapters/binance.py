@@ -144,7 +144,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
             params["timeInForce"] = "GTC"
         if client_order_id:
             params["newClientOrderId"] = client_order_id
-        if reduce_only and not spot:
+        if reduce_only and self.market in (Market.USDS_M, Market.COIN_M):
             params["reduceOnly"] = "true"
         if stop_price is not None:
             params["stopPrice"] = str(stop_price)
