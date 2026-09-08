@@ -57,7 +57,11 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
     if not repository.claim_event(event_key, fill.account_id, "fill", fill.occurred_at):
         return None
     position = repository.get_or_create_position(fill.account_id, fill.market, fill.symbol)
-    fills = repository.fills_for_position(fill.account_id, fill.market, fill.symbol, fill)
+    fills_for_position = getattr(repository, "fills_for_position", None)
+    if callable(fills_for_position):
+        fills = fills_for_position(fill.account_id, fill.market, fill.symbol, fill)
+    else:
+        fills = [fill]
     quantity, average_entry, gross_realized, fees = _aggregate_fills(fills)
     funding = _decimal_or_zero(position.funding)
     position.quantity = quantity
