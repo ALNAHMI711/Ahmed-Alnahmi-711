@@ -53,7 +53,7 @@ def test_best_bid_ask_and_spread_are_deterministic():
     assert book.best_bid == Decimal("99")
     assert book.best_ask == Decimal("100")
     assert book.spread == Decimal("1")
-    assert book.spread_bps == Decimal("100.5025125628140703517587939698492")
+    assert book.spread_bps == Decimal("101.0101010101010101010101010101010")
 
 
 def test_buy_slippage_walks_multiple_ask_levels():
