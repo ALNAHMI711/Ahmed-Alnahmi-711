@@ -35,6 +35,5 @@ def test_restart_does_nothing_for_terminal_state():
     assert restart_action("CANCELED", "123") == "NOOP"
 
 
-def test_unknown_state_fails_closed():
-    with pytest.raises(ValueError):
-        restart_action("UNKNOWN", None)
+def test_unknown_state_requires_reconciliation_before_action():
+    assert restart_action("UNKNOWN", None) == "RECONCILE_BEFORE_ACTION"
