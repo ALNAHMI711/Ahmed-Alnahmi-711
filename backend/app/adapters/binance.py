@@ -223,7 +223,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
 
     async def order_status(self, symbol: str, *, order_id: str | None = None, client_order_id: str | None = None) -> dict:
         spot = self.market == Market.SPOT
-        path = self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market == Market.COIN_M else "/fapi/v2/order")
+        path = self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market == Market.COIN_M else "/fapi/v1/order")
         params: dict[str, object] = {"symbol": symbol}
         params.update({"orderId": order_id} if order_id else {"origClientOrderId": client_order_id})
         params.update(self._margin_params() if self._margin() else {})
