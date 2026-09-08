@@ -11,6 +11,7 @@ from backend.app.market_data.schemas import KlineInterval, KlineRecord
 from backend.app.market_data.validation import validate_kline
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
+NOW_MS = 1_767_226_200_000
 
 
 def candle(**overrides: object) -> KlineRecord:
@@ -52,22 +53,24 @@ def test_close_time_must_match_inclusive_interval_boundary() -> None:
 
 
 def test_future_open_time_is_rejected() -> None:
+    open_time = NOW_MS + 60_000
     with pytest.raises(ValueError, match="future"):
-        validate_kline(candle(open_time=660_000, close_time=719_999), now=NOW)
+        validate_kline(candle(open_time=open_time, close_time=open_time + 59_999), now=NOW)
 
 
 def test_closed_candle_cannot_end_in_future() -> None:
+    open_time = NOW_MS - 60_000
     with pytest.raises(ValueError, match="closed candle"):
         validate_kline(
-            candle(),
-            now=datetime.fromtimestamp(659.999 / 1000, tz=timezone.utc),
+            candle(open_time=open_time, close_time=NOW_MS - 1),
+            now=datetime(2026, 1, 1, 0, 9, 59, 500_000, tzinfo=timezone.utc),
         )
 
 
 def test_forming_candle_may_have_future_close_boundary() -> None:
     result = validate_kline(
-        candle(is_closed=False),
-        now=datetime.fromtimestamp(630 / 1000, tz=timezone.utc),
+        candle(open_time=NOW_MS, close_time=NOW_MS + 59_999, is_closed=False),
+        now=NOW,
     )
     assert result.is_closed is False
 
