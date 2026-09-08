@@ -1,7 +1,7 @@
 """Persistence boundary. Secrets are encrypted before ORM persistence."""
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Boolean, DateTime, String, Text, create_engine
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from backend.app.settings import settings
 
