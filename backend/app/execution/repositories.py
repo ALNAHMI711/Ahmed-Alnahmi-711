@@ -1,10 +1,14 @@
 """Repository layer: all writes are transactional and duplicate-safe."""
+
 from datetime import datetime
 from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from .models import Position, ProjectionEvent, Trade
+
 
 class TradeRepository:
     def __init__(self, db: Session): self.db = db
