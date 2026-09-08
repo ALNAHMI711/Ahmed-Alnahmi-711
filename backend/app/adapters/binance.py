@@ -5,7 +5,7 @@ import hmac
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, cast
+from typing import cast
 from urllib.parse import urlencode
 
 import httpx
@@ -57,13 +57,13 @@ def _d(value: object) -> Decimal:
 
 def _object(value: object) -> dict[str, object]:
     if not isinstance(value, dict):
-        raise ValueError("invalid Binance object payload")
+        raise TypeError("invalid Binance object payload")
     return cast(dict[str, object], value)
 
 
 def _objects(value: object) -> list[dict[str, object]]:
     if not isinstance(value, list):
-        raise ValueError("invalid Binance list payload")
+        raise TypeError("invalid Binance list payload")
     return [cast(dict[str, object], row) for row in value if isinstance(row, dict)]
 
 
