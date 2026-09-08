@@ -1,25 +1,43 @@
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
+
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile, WebSocket, WebSocketDisconnect, Request
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from backend.app.database import ApiAccount, AuditLog, KillSwitch, SessionLocal, User, init_database
-from backend.app.security.crypto import SecretCipher
-from backend.app.services.upload_scan import inspect_upload
-from backend.app.security.guards import live_trading_allowed
+
 from backend.app.adapters.base import AccountCapabilities, Market
 from backend.app.adapters.binance import BinanceAdapter
-from backend.app.security.auth import admin, current_user, login, logout
-from backend.app.websocket import WebSocketDispatcher
+from backend.app.database import (
+    ApiAccount,
+    AuditLog,
+    KillSwitch,
+    SessionLocal,
+    User,
+    init_database,
+)
 from backend.app.execution.manual import submit_manual
 from backend.app.execution.signal_execution import submit_signal
+from backend.app.security.auth import admin, current_user, login, logout
+from backend.app.security.crypto import SecretCipher
+from backend.app.security.guards import live_trading_allowed
 from backend.app.security.web import RateLimiter, require_csrf
-from signals.parser import parse
+from backend.app.services.upload_scan import inspect_upload
+from backend.app.websocket import WebSocketDispatcher
 from risk.engine import RiskLimits, evaluate
+from signals.parser import parse
 
 CurrentUser = Annotated[User, Depends(current_user)]
 AdminUser = Annotated[User, Depends(admin)]
