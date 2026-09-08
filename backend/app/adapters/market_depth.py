@@ -2,16 +2,39 @@ from dataclasses import dataclass
 from decimal import Decimal
 from .base import Market
 
+
 @dataclass(frozen=True)
 class BookLevel:
     price: Decimal
     quantity: Decimal
+
 
 @dataclass(frozen=True)
 class OrderBook:
     bids: tuple[BookLevel, ...]
     asks: tuple[BookLevel, ...]
     last_update_id: int | None = None
+
+    @property
+    def best_bid(self) -> Decimal:
+        if not self.bids:
+            raise ValueError("order book has no bids")
+        return self.bids[0].price
+
+    @property
+    def best_ask(self) -> Decimal:
+        if not self.asks:
+            raise ValueError("order book has no asks")
+        return self.asks[0].price
+
+    @property
+    def spread(self) -> Decimal:
+        return self.best_ask - self.best_bid
+
+    @property
+    def spread_bps(self) -> Decimal:
+        return self.spread / self.best_bid * Decimal("10000")
+
 
 @dataclass(frozen=True)
 class SlippageEstimate:
@@ -22,6 +45,7 @@ class SlippageEstimate:
     slippage_bps: Decimal
     fully_fillable: bool
 
+
 class BinanceMarketDepthMixin:
     async def order_book(self, symbol: str, limit: int = 20) -> OrderBook:
         if limit <= 0 or limit > 1000:
@@ -30,7 +54,11 @@ class BinanceMarketDepthMixin:
         response = await self.client.get(self.base_url + path, params={"symbol": symbol, "limit": limit})
         response.raise_for_status()
         payload = response.json()
-        return OrderBook(tuple(BookLevel(Decimal(str(p)), Decimal(str(q))) for p, q in payload.get("bids", [])), tuple(BookLevel(Decimal(str(p)), Decimal(str(q))) for p, q in payload.get("asks", [])), payload.get("lastUpdateId"))
+        return OrderBook(
+            tuple(BookLevel(Decimal(str(p)), Decimal(str(q))) for p, q in payload.get("bids", [])),
+            tuple(BookLevel(Decimal(str(p)), Decimal(str(q))) for p, q in payload.get("asks", [])),
+            payload.get("lastUpdateId"),
+        )
 
     @staticmethod
     def estimate_slippage(book: OrderBook, side: str, quantity: Decimal) -> SlippageEstimate:
@@ -51,7 +79,7 @@ class BinanceMarketDepthMixin:
                 break
         filled = remaining <= 0
         average = notional / quantity if filled else Decimal("0")
-        slippage = ((average - reference) / reference * Decimal("10000")) if filled else Decimal("0")
-        if side == "SELL":
-            slippage = ((reference - average) / reference * Decimal("10000")) if filled else Decimal("0")
-        return SlippageEstimate(side, quantity, reference, average, slippage, filled)
+        if not filled:
+            return SlippageEstimate(side, quantity, reference, Decimal("0"), Decimal("0"), False)
+        slippage = ((average - reference) / reference * Decimal("10000")) if side == "BUY" else ((reference - average) / reference * Decimal("10000"))
+        return SlippageEstimate(side, quantity, reference, average, slippage, True)
