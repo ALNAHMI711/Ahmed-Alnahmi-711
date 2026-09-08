@@ -24,7 +24,11 @@ ADAPTERS = [
 
 
 def adapter(adapter_type, handler):
-    return adapter_type("test-key", "test-secret", httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    return adapter_type(
+        "test-key",
+        "test-secret",
+        httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
 
 
 @pytest.mark.parametrize("adapter_type, expected_path", ADAPTERS)
@@ -33,11 +37,14 @@ def test_order_book_routes_to_correct_public_binance_endpoint(adapter_type, expe
         assert request.url.path == expected_path
         assert request.url.params["symbol"] == "BTCUSDT"
         assert request.url.params["limit"] == "20"
-        return httpx.Response(200, json={
-            "lastUpdateId": 123,
-            "bids": [["99.0", "2.0"], ["98.5", "3.0"]],
-            "asks": [["100.0", "1.0"], ["101.0", "4.0"]],
-        })
+        return httpx.Response(
+            200,
+            json={
+                "lastUpdateId": 123,
+                "bids": [["99.0", "2.0"], ["98.5", "3.0"]],
+                "asks": [["100.0", "1.0"], ["101.0", "4.0"]],
+            },
+        )
 
     result = asyncio.run(adapter(adapter_type, handler).order_book("BTCUSDT"))
     assert result.last_update_id == 123
