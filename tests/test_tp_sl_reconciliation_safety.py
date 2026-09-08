@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 import pytest
 from backend.app.execution.exits import exit_order_request, validate_exit
@@ -45,7 +45,7 @@ class FakeRepository:
 
 def test_projection_fill_is_idempotent():
     repository = FakeRepository()
-    trade = Trade(account_id="a", market="usds_m", symbol="BTCUSDT", exchange_trade_id="7", side="BUY", quantity=Decimal("1"), price=Decimal("100"), quote_quantity=Decimal("100"), fee=Decimal("0.1"), occurred_at=datetime.utcnow())
+    trade = Trade(account_id="a", market="usds_m", symbol="BTCUSDT", exchange_trade_id="7", side="BUY", quantity=Decimal("1"), price=Decimal("100"), quote_quantity=Decimal("100"), fee=Decimal("0.1"), occurred_at=datetime.now(timezone.utc))
     first = apply_fill(repository, trade)
     second = apply_fill(repository, trade)
     assert first is not None
