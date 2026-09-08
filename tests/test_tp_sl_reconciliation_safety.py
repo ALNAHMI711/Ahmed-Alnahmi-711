@@ -32,6 +32,7 @@ class FakeRepository:
     def __init__(self):
         self.events = set()
         self.position = None
+        self.fills = []
 
     def claim_event(self, key, account_id, kind, occurred_at):
         if key in self.events:
@@ -43,6 +44,10 @@ class FakeRepository:
         if self.position is None:
             self.position = Position(account_id=account_id, market=market, symbol=symbol)
         return self.position
+
+    def fills_for_position(self, account_id, market, symbol, fill):
+        self.fills.append(fill)
+        return self.fills
 
 
 def test_projection_fill_is_idempotent():
