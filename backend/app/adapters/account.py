@@ -1,11 +1,13 @@
 from decimal import Decimal
 from typing import Protocol
 
+import httpx
+
 from .base import AccountEquity, Market
 
 
 class _AccountContext(Protocol):
-    client: object
+    client: httpx.AsyncClient
     base_url: str
     market: Market
 
@@ -45,10 +47,10 @@ class BinanceAccountMixin(_AccountContext):
         if self.market == Market.SPOT:
             payload = await self._signed_get("/api/v3/account")
             data = payload if isinstance(payload, dict) else {}
-            balances = data.get("balances", [])
-            if not isinstance(balances, list):
+            spot_balances = data.get("balances", [])
+            if not isinstance(spot_balances, list):
                 raise ValueError("invalid Binance spot balances payload")
-            equity, available = await self._value_balances([row for row in balances if isinstance(row, dict)])
+            equity, available = await self._value_balances([row for row in spot_balances if isinstance(row, dict)])
             return AccountEquity(equity, available, "USDT", "binance_spot_balances")
         if self.market == Market.CROSS_MARGIN:
             payload = await self._signed_get("/sapi/v1/margin/account", {"isIsolated": "FALSE"})
@@ -58,7 +60,7 @@ class BinanceAccountMixin(_AccountContext):
         if self.market == Market.ISOLATED_MARGIN:
             payload = await self._signed_get("/sapi/v1/margin/isolated/account", {"symbols": symbol} if symbol else {})
             data = payload if isinstance(payload, dict) else {}
-            balances: list[dict[str, object]] = []
+            isolated_balances: list[dict[str, object]] = []
             assets = data.get("assets", [])
             if not isinstance(assets, list):
                 raise ValueError("invalid Binance isolated margin payload")
@@ -68,7 +70,7 @@ class BinanceAccountMixin(_AccountContext):
                 for key in ("baseAsset", "quoteAsset"):
                     asset = account.get(key)
                     if isinstance(asset, dict):
-                        balances.append({"asset": asset.get("asset", ""), "free": asset.get("netAsset", "0"), "locked": "0"})
-            equity, available = await self._value_balances([row for row in balances if row["asset"]])
+                        isolated_balances.append({"asset": asset.get("asset", ""), "free": asset.get("netAsset", "0"), "locked": "0"})
+            equity, available = await self._value_balances([row for row in isolated_balances if row["asset"]])
             return AccountEquity(equity, available, "USDT", "binance_isolated_margin_account")
         raise ValueError("equity is unavailable for this market")
