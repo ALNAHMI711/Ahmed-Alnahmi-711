@@ -4,7 +4,7 @@ from decimal import Decimal
 import httpx
 import pytest
 
-from backend.app.adapters.market_depth import OrderBook, BookLevel
+from backend.app.adapters.market_depth import BookLevel, OrderBook
 from backend.app.adapters.markets import (
     COINMAdapter,
     CrossMarginAdapter,
@@ -47,48 +47,48 @@ def test_order_book_routes_to_correct_public_binance_endpoint(adapter_type, expe
 
 def test_best_bid_ask_and_spread_are_deterministic():
     book = OrderBook(
-        bids=(BookLevel(Decimal("99"), Decimal("2")),),
-        asks=(BookLevel(Decimal("100"), Decimal("1")),),
+        bids=(BookLevel(Decimal(99), Decimal(2)),),
+        asks=(BookLevel(Decimal(100), Decimal(1)),),
     )
-    assert book.best_bid == Decimal("99")
-    assert book.best_ask == Decimal("100")
-    assert book.spread == Decimal("1")
+    assert book.best_bid == Decimal(99)
+    assert book.best_ask == Decimal(100)
+    assert book.spread == Decimal(1)
     assert book.spread_bps == Decimal("101.0101010101010101010101010101010")
 
 
 def test_buy_slippage_walks_multiple_ask_levels():
     book = OrderBook(
-        bids=(BookLevel(Decimal("99"), Decimal("10")),),
-        asks=(BookLevel(Decimal("100"), Decimal("2")), BookLevel(Decimal("102"), Decimal("3"))),
+        bids=(BookLevel(Decimal(99), Decimal(10)),),
+        asks=(BookLevel(Decimal(100), Decimal(2)), BookLevel(Decimal(102), Decimal(3))),
     )
-    result = USDSMAdapter.estimate_slippage(book, "BUY", Decimal("3"))
+    result = USDSMAdapter.estimate_slippage(book, "BUY", Decimal(3))
     assert result.fully_fillable is True
-    assert result.reference_price == Decimal("100")
+    assert result.reference_price == Decimal(100)
     assert result.estimated_average_price == Decimal("100.6666666666666666666666666666667")
     assert result.slippage_bps == Decimal("66.6666666666666666666666666666667")
 
 
 def test_sell_slippage_walks_multiple_bid_levels():
     book = OrderBook(
-        bids=(BookLevel(Decimal("99"), Decimal("2")), BookLevel(Decimal("98"), Decimal("3"))),
-        asks=(BookLevel(Decimal("100"), Decimal("10")),),
+        bids=(BookLevel(Decimal(99), Decimal(2)), BookLevel(Decimal(98), Decimal(3))),
+        asks=(BookLevel(Decimal(100), Decimal(10)),),
     )
-    result = USDSMAdapter.estimate_slippage(book, "SELL", Decimal("3"))
+    result = USDSMAdapter.estimate_slippage(book, "SELL", Decimal(3))
     assert result.fully_fillable is True
-    assert result.reference_price == Decimal("99")
+    assert result.reference_price == Decimal(99)
     assert result.estimated_average_price == Decimal("98.6666666666666666666666666666667")
     assert result.slippage_bps == Decimal("33.67003367003367003367003367003367")
 
 
 def test_slippage_fails_closed_when_depth_is_insufficient():
     book = OrderBook(
-        bids=(BookLevel(Decimal("99"), Decimal("1")),),
-        asks=(BookLevel(Decimal("100"), Decimal("1")),),
+        bids=(BookLevel(Decimal(99), Decimal(1)),),
+        asks=(BookLevel(Decimal(100), Decimal(1)),),
     )
-    result = USDSMAdapter.estimate_slippage(book, "BUY", Decimal("2"))
+    result = USDSMAdapter.estimate_slippage(book, "BUY", Decimal(2))
     assert result.fully_fillable is False
-    assert result.estimated_average_price == Decimal("0")
-    assert result.slippage_bps == Decimal("0")
+    assert result.estimated_average_price == Decimal(0)
+    assert result.slippage_bps == Decimal(0)
 
 
 def test_order_book_rejects_invalid_limit():
@@ -103,10 +103,10 @@ def test_order_book_rejects_invalid_limit():
 
 def test_slippage_rejects_invalid_side_and_quantity():
     book = OrderBook(
-        bids=(BookLevel(Decimal("99"), Decimal("1")),),
-        asks=(BookLevel(Decimal("100"), Decimal("1")),),
+        bids=(BookLevel(Decimal(99), Decimal(1)),),
+        asks=(BookLevel(Decimal(100), Decimal(1)),),
     )
     with pytest.raises(ValueError):
-        USDSMAdapter.estimate_slippage(book, "HOLD", Decimal("1"))
+        USDSMAdapter.estimate_slippage(book, "HOLD", Decimal(1))
     with pytest.raises(ValueError):
-        USDSMAdapter.estimate_slippage(book, "BUY", Decimal("0"))
+        USDSMAdapter.estimate_slippage(book, "BUY", Decimal(0))
