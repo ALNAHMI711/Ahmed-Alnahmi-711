@@ -42,7 +42,7 @@ class ProjectionRepository:
         return True
 
 class OrderRepository:
-    VALID = frozenset({"NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED"})
+    VALID = frozenset({"NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED", "UNKNOWN"})
     def __init__(self, db: Session): self.db = db
     def by_request(self, account_id: str, client_request_id: str):
         from .models import ExchangeOrder
@@ -59,7 +59,7 @@ class OrderRepository:
 
 class ConditionalOrderRepository:
     KINDS=frozenset({'TP1','TP2','TP3','TP4','TP5','TP6','TP7','SL','PARTIAL_CLOSE','BREAK_EVEN','TRAILING'})
-    STATES=frozenset({'ACTIVE','SUBMITTED','FILLED','CANCELED','REJECTED','EXPIRED'})
+    STATES=frozenset({'ACTIVE','SUBMITTED','PARTIALLY_FILLED','FILLED','CANCELED','REJECTED','EXPIRED','UNKNOWN'})
     def __init__(self,db): self.db=db
     def create_once(self,plan):
         if plan.kind not in self.KINDS or plan.quantity <= 0: raise ValueError('invalid conditional order')
