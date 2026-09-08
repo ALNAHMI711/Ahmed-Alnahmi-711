@@ -7,8 +7,6 @@ from pydantic import ValidationError
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
 from backend.app.market_data.validation import validate_kline
-
-
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 
 
