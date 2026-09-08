@@ -6,6 +6,7 @@ import pytest
 from backend.app.adapters.base import Market
 from backend.app.adapters.binance import BinanceAdapter
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("market,expected_path", [
     (Market.SPOT, "/api/v3/order"),
