@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
