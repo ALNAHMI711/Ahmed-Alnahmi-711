@@ -1,4 +1,5 @@
 """Pure domain schemas for historical and forming market candles."""
+from calendar import timegm
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import StrEnum
@@ -44,7 +45,7 @@ INTERVAL_MS: dict[KlineInterval, int] = {
 class KlineRecord(BaseModel):
     """Immutable exchange candle contract; timestamps are UTC epoch milliseconds."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
 
     market: str = Field(min_length=1, max_length=32)
     symbol: str = Field(min_length=1, max_length=32)
@@ -61,11 +62,11 @@ class KlineRecord(BaseModel):
     is_closed: bool = False
     source: str = Field(default="binance", min_length=1, max_length=64)
 
-    @field_validator("open", "high", "low", "close", "volume", "quote_volume")
+    @field_validator("open", "high", "low", "close", "volume", "quote_volume", mode="before")
     @classmethod
-    def finite_non_negative_prices_or_volume(cls, value: Decimal) -> Decimal:
-        if not value.is_finite():
-            raise ValueError("decimal values must be finite")
+    def require_decimal(cls, value: object) -> Decimal:
+        if not isinstance(value, Decimal) or not value.is_finite():
+            raise ValueError("OHLCV values must be finite Decimal values")
         return value
 
     @field_validator("symbol", "market")
@@ -77,5 +78,10 @@ class KlineRecord(BaseModel):
         return normalized
 
 
-def utc_now_ms() -> int:
-    return int(datetime.now(timezone.utc).timestamp() * 1000)
+def utc_now_ms(value: datetime | None = None) -> int:
+    """Return UTC epoch milliseconds without float-based timestamp arithmetic."""
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("datetime must be timezone-aware")
+    utc = current.astimezone(timezone.utc)
+    return timegm(utc.utctimetuple()) * 1000 + utc.microsecond // 1000
