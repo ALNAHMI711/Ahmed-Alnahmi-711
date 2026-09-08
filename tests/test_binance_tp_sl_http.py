@@ -1,6 +1,8 @@
 from decimal import Decimal
+
 import httpx
 import pytest
+
 from backend.app.adapters.base import Market
 from backend.app.adapters.binance import BinanceAdapter
 
@@ -22,9 +24,9 @@ async def test_tp_sl_submission_uses_market_native_endpoint(market, expected_pat
     adapter = BinanceAdapter(market, "key", "secret", client=client)
     order_type = "STOP_MARKET" if market in (Market.USDS_M, Market.COIN_M) else "STOP_LOSS_LIMIT"
     response = await adapter.place_order(
-        "BTCUSDT", "SELL", order_type, Decimal("1"),
-        price=Decimal("89") if market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else None,
-        client_order_id="sl-http-1", reduce_only=True, stop_price=Decimal("90"),
+        "BTCUSDT", "SELL", order_type, Decimal(1),
+        price=Decimal(89) if market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else None,
+        client_order_id="sl-http-1", reduce_only=True, stop_price=Decimal(90),
     )
     assert seen["path"] == expected_path
     assert response["orderId"] == 987
