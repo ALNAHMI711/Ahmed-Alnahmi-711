@@ -1,6 +1,7 @@
 """Mandatory risk/confirmation gate for real Binance order submissions."""
 from dataclasses import dataclass
 from decimal import Decimal
+
 from backend.app.adapters.binance import BinanceAdapter
 from risk.engine import RiskDecision
 
