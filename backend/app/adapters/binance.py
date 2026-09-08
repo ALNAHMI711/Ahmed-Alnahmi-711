@@ -1,4 +1,4 @@
-"""Authenticated Binance REST sources used by reconciliation (not WebSockets)."""
+"""Authenticated Binance REST sources used by reconciliation and dashboard reads."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import httpx
 from .account import BinanceAccountMixin
 from .base import AccountCapabilities, ExchangeAdapter, Market
+from .market_depth import BinanceMarketDepthMixin
 
 @dataclass(frozen=True)
 class ExchangeFill:
@@ -22,8 +23,8 @@ class ExchangePosition:
 def _time(value: int | str) -> datetime: return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc).replace(tzinfo=None)
 def _d(value: object) -> Decimal: return Decimal(str(value))
 
-class BinanceAdapter(BinanceAccountMixin, ExchangeAdapter):
-    """Binance API adapter. API credentials are supplied by the account vault."""
+class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapter):
+    """Binance API adapter. Credentials are supplied only by the encrypted account vault."""
     def __init__(self, market: Market, api_key: str, api_secret: str, client: httpx.AsyncClient | None = None):
         self.market, self.api_key, self.api_secret = market, api_key, api_secret
         self.client = client or httpx.AsyncClient(timeout=15)
@@ -41,7 +42,8 @@ class BinanceAdapter(BinanceAccountMixin, ExchangeAdapter):
         payload = await self._signed_get(path, self._margin_params() if self._margin() else {})
         return AccountCapabilities(bool(payload.get("canTrade", True)), bool(payload.get("canWithdraw", False)), False)
     async def validate_symbol(self, symbol: str) -> bool:
-        response = await self.client.get(self.base_url + ("/api/v3/exchangeInfo" if not self._margin() and self.market == Market.SPOT else ("/dapi/v1/exchangeInfo" if self.market == Market.COIN_M else "/fapi/v1/exchangeInfo"))); response.raise_for_status()
+        path = "/api/v3/exchangeInfo" if not self._margin() and self.market == Market.SPOT else ("/dapi/v1/exchangeInfo" if self.market == Market.COIN_M else "/fapi/v1/exchangeInfo")
+        response = await self.client.get(self.base_url + path); response.raise_for_status()
         return any(item["symbol"] == symbol for item in response.json()["symbols"])
     async def fills(self, symbol: str, start_time: int | None = None) -> list[ExchangeFill]:
         spot = self.market == Market.SPOT
@@ -62,7 +64,6 @@ class BinanceAdapter(BinanceAccountMixin, ExchangeAdapter):
         response = await self.client.get(self.base_url + path, params={"symbol": symbol}); response.raise_for_status()
         payload = response.json(); return _d(payload.get("markPrice", payload["price"]))
     async def place_order(self, symbol: str, side: str, order_type: str, quantity: Decimal, *, price: Decimal | None = None, client_order_id: str | None = None, reduce_only: bool = False, stop_price: Decimal | None = None) -> dict:
-        """Submit a signed Binance order and return only Binance's confirmed payload."""
         spot = self.market == Market.SPOT
         path = self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market == Market.COIN_M else "/fapi/v1/order")
         params: dict[str, object] = {"symbol": symbol, "side": side, "type": order_type, "quantity": str(quantity)}
@@ -86,7 +87,6 @@ class BinanceAdapter(BinanceAccountMixin, ExchangeAdapter):
         params={"symbol":symbol}; params.update({"orderId":order_id} if order_id else {"origClientOrderId":client_order_id}); params.update(self._margin_params() if self._margin() else {})
         return await self._signed_get(path,params)
     async def cancel_order(self, symbol: str, *, order_id: str | None = None, client_order_id: str | None = None) -> dict:
-        """Cancel an existing order using the correct Binance market endpoint."""
         if not order_id and not client_order_id: raise ValueError("order_id or client_order_id is required")
         spot=self.market == Market.SPOT
         path=self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market==Market.COIN_M else "/fapi/v1/order")
