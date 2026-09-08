@@ -32,6 +32,7 @@ def login(username: str, password: str, response: Response) -> dict:
         user = db.scalar(select(User).where(User.username == username))
         if user is None:
             raise HTTPException(401, "بيانات الدخول غير صحيحة")
+        valid: bool
         try:
             valid = hasher.verify(user.password_hash, password)
         except VerifyMismatchError:
