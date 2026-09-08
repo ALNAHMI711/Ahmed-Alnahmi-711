@@ -2,17 +2,18 @@ from decimal import Decimal
 
 from .base import AccountEquity, Market
 
+
 class BinanceAccountMixin:
     async def _asset_usdt_price(self, asset: str) -> Decimal:
         if asset == "USDT":
-            return Decimal("1")
+            return Decimal(1)
         response = await self.client.get(self.base_url + "/api/v3/ticker/price", params={"symbol": asset + "USDT"})
         response.raise_for_status()
         return Decimal(str(response.json()["price"]))
 
     async def _value_balances(self, balances: list[dict]) -> tuple[Decimal, Decimal]:
-        equity = Decimal("0")
-        available = Decimal("0")
+        equity = Decimal(0)
+        available = Decimal(0)
         for row in balances:
             asset = str(row["asset"])
             total = Decimal(str(row.get("free", "0"))) + Decimal(str(row.get("locked", "0")))
