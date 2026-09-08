@@ -118,15 +118,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
         payload = _object(response.json())
         return any(item.get("symbol") == symbol for item in _objects(payload.get("symbols", [])))
 
-    async def klines(
-        self,
-        symbol: str,
-        interval: KlineInterval,
-        *,
-        start_time: int | None = None,
-        end_time: int | None = None,
-        limit: int = 500,
-    ) -> list[KlineRecord]:
+    async def klines(self, symbol: str, interval: KlineInterval, *, start_time: int | None = None, end_time: int | None = None, limit: int = 500) -> list[KlineRecord]:
         """Fetch Binance klines and convert them into validated domain records."""
         if not 1 <= limit <= 1000:
             raise ValueError("limit must be between 1 and 1000")
@@ -138,7 +130,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
             raise ValueError("start_time must not be after end_time")
 
         path = "/api/v3/klines" if self.market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else ("/dapi/v1/klines" if self.market == Market.COIN_M else "/fapi/v1/klines")
-        params: dict[str, object] = {"symbol": symbol, "interval": interval.value, "limit": limit}
+        params: dict[str, str | int] = {"symbol": symbol, "interval": interval.value, "limit": limit}
         if start_time is not None:
             params["startTime"] = start_time
         if end_time is not None:
@@ -231,7 +223,7 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
 
     async def order_status(self, symbol: str, *, order_id: str | None = None, client_order_id: str | None = None) -> dict:
         spot = self.market == Market.SPOT
-        path = self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market == Market.COIN_M else "/fapi/v1/order")
+        path = self._spot_like_path("/api/v3/order", "/sapi/v1/margin/order") if self._margin() or spot else ("/dapi/v1/order" if self.market == Market.COIN_M else "/fapi/v2/order")
         params: dict[str, object] = {"symbol": symbol}
         params.update({"orderId": order_id} if order_id else {"origClientOrderId": client_order_id})
         params.update(self._margin_params() if self._margin() else {})
