@@ -62,8 +62,10 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
     funding = _decimal_or_zero(position.funding)
     position.quantity = quantity
     position.average_entry_price = average_entry
-    position.realized_pnl = (funding + gross_realized - fees).quantize(PNL_SCALE)
-    position.fees = fees.quantize(PNL_SCALE)
+    with localcontext() as context:
+        context.prec = 60
+        position.realized_pnl = (funding + gross_realized - fees).quantize(PNL_SCALE)
+        position.fees = fees.quantize(PNL_SCALE)
     position.state = _state(quantity)
     position.version = int(position.version or 0) + 1
     if position.mark_price is not None and quantity != ZERO:
