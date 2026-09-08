@@ -1,11 +1,12 @@
 """Projection engine for signed-average-cost positions from exchange fills."""
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 from .models import Position, Trade
 from .repositories import ProjectionRepository
 
 ZERO = Decimal(0)
 ONE = Decimal(1)
+PNL_SCALE = Decimal("1e-18")
 
 
 def _decimal_or_zero(value: Decimal | None) -> Decimal:
@@ -34,38 +35,40 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
     delta = fill.quantity if fill.side == "BUY" else -fill.quantity
     old_entry = position.average_entry_price
     realized = ZERO
-    if old_qty == ZERO or old_qty * delta > ZERO:
-        new_qty = old_qty + delta
-        if old_qty == ZERO:
-            position.average_entry_price = fill.price
+    with localcontext() as context:
+        context.prec = 60
+        if old_qty == ZERO or old_qty * delta > ZERO:
+            new_qty = old_qty + delta
+            if old_qty == ZERO:
+                position.average_entry_price = fill.price
+            else:
+                if old_entry is None:
+                    raise ValueError("position average entry price is required for an open position")
+                position.average_entry_price = ((abs(old_qty) * old_entry) + (abs(delta) * fill.price)) / abs(new_qty)
         else:
             if old_entry is None:
-                raise ValueError("position average entry price is required for an open position")
-            position.average_entry_price = ((abs(old_qty) * old_entry) + (abs(delta) * fill.price)) / abs(new_qty)
-    else:
-        if old_entry is None:
-            raise ValueError("position average entry price is required for a closing fill")
-        closed = min(abs(old_qty), abs(delta))
-        realized = (fill.price - old_entry) * closed * (ONE if old_qty > ZERO else -ONE)
-        new_qty = old_qty + delta
-        if new_qty == ZERO:
-            position.average_entry_price = None
-        elif new_qty * old_qty < ZERO:
-            position.average_entry_price = fill.price
-    position.quantity = new_qty
-    position.realized_pnl = old_realized + realized - _decimal_or_zero(fill.fee)
-    position.fees = old_fees + _decimal_or_zero(fill.fee)
-    position.funding = old_funding
-    position.state = _state(new_qty)
-    position.version = int(position.version or 0) + 1
-    if position.mark_price is not None and new_qty != ZERO:
-        if position.average_entry_price is None:
-            raise ValueError("position average entry price is required for unrealized PnL")
-        position.unrealized_pnl = (position.mark_price - position.average_entry_price) * new_qty
-    elif new_qty == ZERO:
-        position.unrealized_pnl = ZERO
-    else:
-        position.unrealized_pnl = None
+                raise ValueError("position average entry price is required for a closing fill")
+            closed = min(abs(old_qty), abs(delta))
+            realized = ((fill.price - old_entry) * closed * (ONE if old_qty > ZERO else -ONE)).quantize(PNL_SCALE)
+            new_qty = old_qty + delta
+            if new_qty == ZERO:
+                position.average_entry_price = None
+            elif new_qty * old_qty < ZERO:
+                position.average_entry_price = fill.price
+        position.quantity = new_qty
+        position.realized_pnl = old_realized + realized - _decimal_or_zero(fill.fee)
+        position.fees = old_fees + _decimal_or_zero(fill.fee)
+        position.funding = old_funding
+        position.state = _state(new_qty)
+        position.version = int(position.version or 0) + 1
+        if position.mark_price is not None and new_qty != ZERO:
+            if position.average_entry_price is None:
+                raise ValueError("position average entry price is required for unrealized PnL")
+            position.unrealized_pnl = (position.mark_price - position.average_entry_price) * new_qty
+        elif new_qty == ZERO:
+            position.unrealized_pnl = ZERO
+        else:
+            position.unrealized_pnl = None
     return position
 
 
@@ -77,11 +80,13 @@ def apply_mark(position: Position, mark_price: Decimal) -> Position:
     position.fees = _decimal_or_zero(position.fees)
     position.funding = _decimal_or_zero(position.funding)
     position.mark_price = mark_price
-    if quantity == ZERO:
-        position.unrealized_pnl = ZERO
-    else:
-        if position.average_entry_price is None:
-            raise ValueError("position average entry price is required for an open position")
-        position.unrealized_pnl = (mark_price - position.average_entry_price) * quantity
+    with localcontext() as context:
+        context.prec = 60
+        if quantity == ZERO:
+            position.unrealized_pnl = ZERO
+        else:
+            if position.average_entry_price is None:
+                raise ValueError("position average entry price is required for an open position")
+            position.unrealized_pnl = (mark_price - position.average_entry_price) * quantity
     position.version = int(position.version or 0) + 1
     return position
