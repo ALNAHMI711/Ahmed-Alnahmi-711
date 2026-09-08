@@ -58,16 +58,23 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
     event_key = f"fill:{fill.account_id}:{fill.market}:{fill.exchange_trade_id}"
     if not repository.claim_event(event_key, fill.account_id, "fill", fill.occurred_at):
         return None
-    existing = repository.db.scalar(
-        select(Trade).where(
-            Trade.account_id == fill.account_id,
-            Trade.market == fill.market,
-            Trade.exchange_trade_id == fill.exchange_trade_id,
+
+    # Production repositories persist the exchange-confirmed fill before rebuilding
+    # the projection. Lightweight in-memory test repositories intentionally omit the
+    # SQLAlchemy session; their fills_for_position implementation owns that storage.
+    db = getattr(repository, "db", None)
+    if db is not None:
+        existing = db.scalar(
+            select(Trade).where(
+                Trade.account_id == fill.account_id,
+                Trade.market == fill.market,
+                Trade.exchange_trade_id == fill.exchange_trade_id,
+            )
         )
-    )
-    if existing is None:
-        repository.db.add(fill)
-        repository.db.flush()
+        if existing is None:
+            db.add(fill)
+            db.flush()
+
     position = repository.get_or_create_position(fill.account_id, fill.market, fill.symbol)
     fills = repository.fills_for_position(fill.account_id, fill.market, fill.symbol, fill)
     quantity, average_entry, gross_realized, fees = _aggregate_fills(fills)
