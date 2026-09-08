@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Table
+from sqlalchemy import Table, UniqueConstraint
 
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
@@ -98,8 +98,9 @@ def test_open_must_precede_close() -> None:
 
 def test_uniqueness_key_excludes_api_account() -> None:
     table = cast(Table, Kline.__table__)
-    constraint = next(
-        constraint for constraint in table.constraints if constraint.name == "uq_market_kline_candle"
+    constraint = cast(
+        UniqueConstraint,
+        next(constraint for constraint in table.constraints if constraint.name == "uq_market_kline_candle"),
     )
     assert {column.name for column in constraint.columns} == {
         "market",
