@@ -6,6 +6,7 @@ import pytest
 from app.adapters.base import Market
 from app.adapters.binance import BinanceAdapter
 from app.market_data import KlineInterval
+
 BASE_OPEN_MS = 1_760_000_040_000
 BASE_CLOSE_MS = BASE_OPEN_MS + 59_999
 
