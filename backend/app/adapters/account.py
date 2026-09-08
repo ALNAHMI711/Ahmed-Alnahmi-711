@@ -16,6 +16,8 @@ class _AccountContext(Protocol):
 
 class BinanceAccountMixin(_AccountContext):
     async def _asset_usdt_price(self: "BinanceAccountMixin", asset: str) -> Decimal:
+        if asset == "USDT":
+            return Decimal(1)
         response = await self.client.get(self.base_url + "/api/v3/ticker/price", params={"symbol": asset + "USDT"})
         response.raise_for_status()
         return Decimal(str(response.json()["price"]))
