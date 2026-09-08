@@ -49,15 +49,16 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
             if old_entry is None:
                 raise ValueError("position average entry price is required for a closing fill")
             closed = min(abs(old_qty), abs(delta))
-            realized = ((fill.price - old_entry) * closed * (ONE if old_qty > ZERO else -ONE)).quantize(PNL_SCALE)
+            realized = (fill.price - old_entry) * closed * (ONE if old_qty > ZERO else -ONE)
             new_qty = old_qty + delta
             if new_qty == ZERO:
                 position.average_entry_price = None
             elif new_qty * old_qty < ZERO:
                 position.average_entry_price = fill.price
         position.quantity = new_qty
-        position.realized_pnl = (old_realized + realized - _decimal_or_zero(fill.fee)).quantize(PNL_SCALE)
-        position.fees = (old_fees + _decimal_or_zero(fill.fee)).quantize(PNL_SCALE)
+        cumulative_realized = old_realized + realized - _decimal_or_zero(fill.fee)
+        position.realized_pnl = cumulative_realized.quantize(PNL_SCALE) if new_qty == ZERO else cumulative_realized
+        position.fees = old_fees + _decimal_or_zero(fill.fee)
         position.funding = old_funding
         position.state = _state(new_qty)
         position.version = int(position.version or 0) + 1
