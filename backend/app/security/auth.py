@@ -30,8 +30,10 @@ def login(username: str, password: str, response: Response) -> dict:
     with SessionLocal() as db:
         bootstrap_admin(db)
         user = db.scalar(select(User).where(User.username == username))
+        if user is None:
+            raise HTTPException(401, "بيانات الدخول غير صحيحة")
         try:
-            valid = bool(user) and hasher.verify(user.password_hash, password)
+            valid = hasher.verify(user.password_hash, password)
         except VerifyMismatchError:
             valid = False
         if not valid:
@@ -52,7 +54,7 @@ def current_user(session: str | None = Cookie(default=None)) -> User:
         if not record or record.revoked_at or record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
             raise HTTPException(401, "الجلسة غير صالحة أو منتهية")
         user = db.get(User, record.user_id)
-        if not user:
+        if user is None:
             raise HTTPException(401, "الجلسة غير صالحة")
         db.expunge(user)
         return user
