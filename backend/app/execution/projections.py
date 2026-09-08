@@ -1,6 +1,8 @@
 """Projection engine for signed-average-cost positions from exchange fills."""
 from decimal import Decimal, localcontext
 
+from sqlalchemy import select
+
 from .models import Position, Trade
 from .repositories import ProjectionRepository
 
@@ -56,12 +58,18 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
     event_key = f"fill:{fill.account_id}:{fill.market}:{fill.exchange_trade_id}"
     if not repository.claim_event(event_key, fill.account_id, "fill", fill.occurred_at):
         return None
+    existing = repository.db.scalar(
+        select(Trade).where(
+            Trade.account_id == fill.account_id,
+            Trade.market == fill.market,
+            Trade.exchange_trade_id == fill.exchange_trade_id,
+        )
+    )
+    if existing is None:
+        repository.db.add(fill)
+        repository.db.flush()
     position = repository.get_or_create_position(fill.account_id, fill.market, fill.symbol)
-    fills_for_position = getattr(repository, "fills_for_position", None)
-    if callable(fills_for_position):
-        fills = fills_for_position(fill.account_id, fill.market, fill.symbol, fill)
-    else:
-        fills = [fill]
+    fills = repository.fills_for_position(fill.account_id, fill.market, fill.symbol, fill)
     quantity, average_entry, gross_realized, fees = _aggregate_fills(fills)
     funding = _decimal_or_zero(position.funding)
     position.quantity = quantity
