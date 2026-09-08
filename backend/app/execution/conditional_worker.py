@@ -1,4 +1,5 @@
 """DB-backed conditional executor with fail-closed risk and reconciliation lifecycle."""
+import httpx
 from sqlalchemy import select
 from backend.app.database import KillSwitch
 from .models import ConditionalOrder, Position
@@ -30,7 +31,7 @@ class ConditionalOrderWorker:
                 adapter = self.adapter_factory(plan.account_id, plan.market)
                 try:
                     mark = await adapter.mark_price(plan.symbol)
-                except Exception:
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
                     continue
                 if plan.trigger_price is not None and plan.trigger_price <= 0:
                     plan.status = 'REJECTED'
@@ -46,7 +47,7 @@ class ConditionalOrderWorker:
                     continue
                 try:
                     remote = await self.execution_submit(plan, adapter)
-                except Exception:
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
                     continue
                 exchange_order_id = remote.get('orderId')
                 if exchange_order_id is None:
