@@ -28,7 +28,7 @@ def test_projection_partial_close_reverse_and_full_close():
         for item in (fill("1", "BUY", "2", "100", "1"), fill("2", "BUY", "1", "110", "1"), fill("3", "SELL", "1", "120", "1"), fill("4", "SELL", "3", "90", "1"), fill("5", "BUY", "1", "80", "1")):
             assert apply_fill(repo, item) is not None
         position = repo.position("account", "usds_m", "BTCUSDT")
-        assert position.quantity == D("1") and position.state == "OPEN"
+        assert position.quantity == D("0") and position.state == "CLOSED"
         assert position.realized_pnl == D("-5")
         assert position.fees == D("5")
         db.commit()
