@@ -81,8 +81,9 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
 
 
 def init_database() -> None:
-    # Register execution models before create_all for development SQLite deployments.
+    # Register execution and market-data models before create_all for development SQLite deployments.
     import backend.app.execution.models  # noqa: F401
+    import backend.app.market_data.models  # noqa: F401
 
     Base.metadata.create_all(engine)
 
