@@ -1,10 +1,12 @@
 """DB-backed conditional executor with fail-closed risk and reconciliation lifecycle."""
+import logging
 import httpx
 from sqlalchemy import select
 from backend.app.database import KillSwitch
 from .models import ConditionalOrder, Position
 from .exits import should_trigger
 
+logger = logging.getLogger(__name__)
 
 class ConditionalOrderWorker:
     def __init__(self, sessions, adapter_factory, execution_submit):
@@ -31,7 +33,8 @@ class ConditionalOrderWorker:
                 adapter = self.adapter_factory(plan.account_id, plan.market)
                 try:
                     mark = await adapter.mark_price(plan.symbol)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                    logger.warning("conditional mark lookup failed for %s: %s", plan.symbol, error, exc_info=True)
                     continue
                 if plan.trigger_price is not None and plan.trigger_price <= 0:
                     plan.status = 'REJECTED'
@@ -47,7 +50,8 @@ class ConditionalOrderWorker:
                     continue
                 try:
                     remote = await self.execution_submit(plan, adapter)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                    logger.warning("conditional order submission failed for %s: %s", plan.symbol, error, exc_info=True)
                     continue
                 exchange_order_id = remote.get('orderId')
                 if exchange_order_id is None:
