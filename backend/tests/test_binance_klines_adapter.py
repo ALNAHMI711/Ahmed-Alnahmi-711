@@ -14,6 +14,7 @@ BASE_CLOSE_MS = BASE_OPEN_MS + 59_999
 
 
 def kline_payload() -> list[list[object]]:
+    # Binance closeTime is the inclusive final millisecond of the candle.
     return [
         [
             BASE_OPEN_MS,
