@@ -47,8 +47,8 @@ def test_partial_fill_sibling_states_are_reconcilable():
 
 def test_full_close_cancels_sibling():
     assert sibling_action(
-        filled_quantity=Decimal("1"),
-        position_quantity=Decimal("0"),
+        filled_quantity=Decimal(1),
+        position_quantity=Decimal(0),
         sibling_status="SUBMITTED",
     ) == "CANCEL_SIBLING"
 
@@ -56,15 +56,15 @@ def test_full_close_cancels_sibling():
 def test_race_invalid_overfill_fails_closed():
     with pytest.raises(ValueError):
         sibling_action(
-            filled_quantity=Decimal("2"),
-            position_quantity=Decimal("1"),
+            filled_quantity=Decimal(2),
+            position_quantity=Decimal(1),
             sibling_status="SUBMITTED",
         )
 
 
 def test_terminal_sibling_is_never_canceled_or_resized():
     assert sibling_action(
-        filled_quantity=Decimal("1"),
-        position_quantity=Decimal("0"),
+        filled_quantity=Decimal(1),
+        position_quantity=Decimal(0),
         sibling_status="FILLED",
     ) == "NOOP"
