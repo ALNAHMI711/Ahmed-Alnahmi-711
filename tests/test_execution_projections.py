@@ -1,13 +1,15 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+
+from backend.app.adapters.binance import ExchangeFill, ExchangePosition, FundingPayment
 from backend.app.database import ApiAccount, Base
 from backend.app.execution.models import Position, Trade
 from backend.app.execution.projections import apply_fill
 from backend.app.execution.reconciliation import ReconciliationWorker
 from backend.app.execution.repositories import ProjectionRepository, TradeRepository
-from backend.app.adapters.binance import ExchangeFill, ExchangePosition, FundingPayment
 
 D = Decimal
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
