@@ -4,7 +4,6 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
-
 from app.adapters.base import Market
 from app.adapters.binance import BinanceAdapter
 
