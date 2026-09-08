@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from secrets import token_urlsafe
+from typing import Annotated
 from fastapi import Cookie, Depends, HTTPException, Response
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -32,7 +33,8 @@ def current_user(session:str|None=Cookie(default=None)) -> User:
         user=db.get(User,record.user_id)
         if not user: raise HTTPException(401,'الجلسة غير صالحة')
         db.expunge(user);return user
-def admin(user:User=Depends(current_user))->User:
+CurrentUser = Annotated[User, Depends(current_user)]
+def admin(user:CurrentUser)->User:
     if user.role!='admin':raise HTTPException(403,'صلاحية administrator مطلوبة')
     return user
 def logout(response:Response,session:str|None=Cookie(default=None))->None:
