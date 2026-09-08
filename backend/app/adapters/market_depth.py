@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+
 from .base import Market
 
 
@@ -33,7 +34,7 @@ class OrderBook:
 
     @property
     def spread_bps(self) -> Decimal:
-        return self.spread / self.best_bid * Decimal("10000")
+        return self.spread / self.best_bid * Decimal(10000)
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,7 @@ class BinanceMarketDepthMixin:
     async def order_book(self, symbol: str, limit: int = 20) -> OrderBook:
         if limit <= 0 or limit > 1000:
             raise ValueError("limit must be between 1 and 1000")
-        path = "/api/v3/depth" if self.market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else ("/dapi/v1/depth" if self.market == Market.COIN_M else "/fapi/v1/depth")
+        path = "/api/v3/depth" if self.market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else "/dapi/v1/depth" if self.market == Market.COIN_M else "/fapi/v1/depth"
         response = await self.client.get(self.base_url + path, params={"symbol": symbol, "limit": limit})
         response.raise_for_status()
         payload = response.json()
@@ -70,7 +71,7 @@ class BinanceMarketDepthMixin:
             raise ValueError("unsupported side or empty order book")
         reference = levels[0].price
         remaining = quantity
-        notional = Decimal("0")
+        notional = Decimal(0)
         for level in levels:
             take = min(remaining, level.quantity)
             notional += take * level.price
@@ -78,8 +79,8 @@ class BinanceMarketDepthMixin:
             if remaining <= 0:
                 break
         filled = remaining <= 0
-        average = notional / quantity if filled else Decimal("0")
+        average = notional / quantity if filled else Decimal(0)
         if not filled:
-            return SlippageEstimate(side, quantity, reference, Decimal("0"), Decimal("0"), False)
-        slippage = ((average - reference) / reference * Decimal("10000")) if side == "BUY" else ((reference - average) / reference * Decimal("10000"))
+            return SlippageEstimate(side, quantity, reference, Decimal(0), Decimal(0), False)
+        slippage = ((average - reference) / reference * Decimal(10000)) if side == "BUY" else ((reference - average) / reference * Decimal(10000))
         return SlippageEstimate(side, quantity, reference, average, slippage, True)
