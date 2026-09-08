@@ -10,7 +10,9 @@ SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 class RateLimiter:
     def __init__(self, limit: int = 120, window_seconds: int = 60):
-        self.limit, self.window, self.calls = limit, window_seconds, defaultdict(deque)
+        self.limit = limit
+        self.window = window_seconds
+        self.calls: defaultdict[str, deque[float]] = defaultdict(deque)
 
     def check(self, key: str) -> None:
         now, bucket = monotonic(), self.calls[key]
