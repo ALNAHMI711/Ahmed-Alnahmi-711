@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Protocol
 
 import httpx
@@ -43,7 +43,9 @@ class OrderBook:
 
     @property
     def spread_bps(self) -> Decimal:
-        return self.spread / self.best_bid * Decimal(10000)
+        with localcontext() as context:
+            context.prec = 60
+            return (self.spread / self.best_bid * Decimal(10000)).quantize(Decimal("1e-31"))
 
 
 @dataclass(frozen=True)
@@ -88,8 +90,10 @@ class BinanceMarketDepthMixin(_DepthContext):
             if remaining <= 0:
                 break
         filled = remaining <= 0
-        average = notional / quantity if filled else Decimal(0)
         if not filled:
             return SlippageEstimate(side, quantity, reference, Decimal(0), Decimal(0), False)
-        slippage = ((average - reference) / reference * Decimal(10000)) if side == "BUY" else ((reference - average) / reference * Decimal(10000))
+        with localcontext() as context:
+            context.prec = 60
+            average = (notional / quantity).quantize(Decimal("1e-31"))
+            slippage = (((average - reference) / reference * Decimal(10000)) if side == "BUY" else ((reference - average) / reference * Decimal(10000))).quantize(Decimal("1e-31"))
         return SlippageEstimate(side, quantity, reference, average, slippage, True)
