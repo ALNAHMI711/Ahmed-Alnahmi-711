@@ -24,9 +24,8 @@ async def test_cancel_order_uses_correct_binance_market_endpoint(market, path, e
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen["method"], seen["path"] = request.method, request.url.path
-        seen["params"] = {
-            key: values[0] for key, values in parse_qs(request.url.query).items()
-        }
+        query = request.url.query.decode() if isinstance(request.url.query, bytes) else request.url.query
+        seen["params"] = {key: values[0] for key, values in parse_qs(query).items()}
         return httpx.Response(200, json={"symbol": "BTCUSDT", "status": "CANCELED"})
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -39,13 +38,9 @@ async def test_cancel_order_uses_correct_binance_market_endpoint(market, path, e
     assert seen["params"]["origClientOrderId"] == "cid-123"
     for key, value in extra.items():
         assert seen["params"][key] == value
-    signed = {
-        key: value for key, value in seen["params"].items() if key != "signature"
-    }
+    signed = {key: value for key, value in seen["params"].items() if key != "signature"}
     query = "&".join(f"{key}={value}" for key, value in signed.items())
-    assert seen["params"]["signature"] == hmac.new(
-        b"test-secret", query.encode(), hashlib.sha256
-    ).hexdigest()
+    assert seen["params"]["signature"] == hmac.new(b"test-secret", query.encode(), hashlib.sha256).hexdigest()
     await client.aclose()
 
 
@@ -53,14 +48,7 @@ async def test_cancel_order_uses_correct_binance_market_endpoint(market, path, e
 async def test_binance_adapter_exposes_market_depth():
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/api/v3/depth"
-        return httpx.Response(
-            200,
-            json={
-                "lastUpdateId": 7,
-                "bids": [["100", "2"]],
-                "asks": [["101", "3"]],
-            },
-        )
+        return httpx.Response(200, json={"lastUpdateId": 7, "bids": [["100", "2"]], "asks": [["101", "3"]]})
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     adapter = BinanceAdapter(Market.SPOT, "k", "s", client)
