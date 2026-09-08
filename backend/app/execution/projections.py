@@ -56,8 +56,8 @@ def apply_fill(repository: ProjectionRepository, fill: Trade) -> Position | None
             elif new_qty * old_qty < ZERO:
                 position.average_entry_price = fill.price
         position.quantity = new_qty
-        position.realized_pnl = old_realized + realized - _decimal_or_zero(fill.fee)
-        position.fees = old_fees + _decimal_or_zero(fill.fee)
+        position.realized_pnl = (old_realized + realized - _decimal_or_zero(fill.fee)).quantize(PNL_SCALE)
+        position.fees = (old_fees + _decimal_or_zero(fill.fee)).quantize(PNL_SCALE)
         position.funding = old_funding
         position.state = _state(new_qty)
         position.version = int(position.version or 0) + 1
