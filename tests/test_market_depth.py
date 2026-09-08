@@ -83,7 +83,7 @@ def test_sell_slippage_walks_multiple_bid_levels():
     assert result.fully_fillable is True
     assert result.reference_price == Decimal(99)
     assert result.estimated_average_price == Decimal("98.6666666666666666666666666666667")
-    assert result.slippage_bps == Decimal("33.67003367003367003367003367003367")
+    assert result.slippage_bps == Decimal("33.6700336700336700336700336700337")
 
 
 def test_slippage_fails_closed_when_depth_is_insufficient():
