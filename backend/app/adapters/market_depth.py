@@ -1,7 +1,17 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TYPE_CHECKING, Protocol
 
 from .base import Market
+
+if TYPE_CHECKING:
+    import httpx
+
+
+class _DepthContext(Protocol):
+    market: Market
+    client: httpx.AsyncClient
+    base_url: str
 
 
 @dataclass(frozen=True)
@@ -47,7 +57,7 @@ class SlippageEstimate:
     fully_fillable: bool
 
 
-class BinanceMarketDepthMixin:
+class BinanceMarketDepthMixin(_DepthContext):
     async def order_book(self, symbol: str, limit: int = 20) -> OrderBook:
         if limit <= 0 or limit > 1000:
             raise ValueError("limit must be between 1 and 1000")
