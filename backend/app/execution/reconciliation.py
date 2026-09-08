@@ -1,6 +1,7 @@
 """Reconcile exchange facts into durable projections; fail closed on ambiguity."""
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
+import logging
 import httpx
 from sqlalchemy import select
 from backend.app.adapters.binance import BinanceAdapter
@@ -8,6 +9,7 @@ from .models import ConditionalOrder, ExchangeOrder, Trade
 from .projections import apply_fill, apply_mark
 from .repositories import OrderRepository, ProjectionRepository, TradeRepository
 
+logger = logging.getLogger(__name__)
 EventPublisher = Callable[[str, dict], Awaitable[None]]
 _TERMINAL = frozenset({"FILLED", "CANCELED", "REJECTED", "EXPIRED"})
 
@@ -44,7 +46,8 @@ class ReconciliationWorker:
             for order in exchange_orders:
                 try:
                     remote = await adapter.order_status(symbol, order_id=order.exchange_order_id, client_order_id=None if order.exchange_order_id else order.client_request_id)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                    logger.warning("order status reconciliation failed for %s: %s", order.exchange_order_id or order.client_request_id, error, exc_info=True)
                     if order.status not in _TERMINAL:
                         orders.update_status(order, "UNKNOWN")
                     continue
@@ -68,7 +71,8 @@ class ReconciliationWorker:
                     continue
                 try:
                     remote = await adapter.order_status(symbol, order_id=plan.exchange_order_id)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                    logger.warning("conditional status reconciliation failed for %s: %s", plan.exchange_order_id, error, exc_info=True)
                     plan.status = "UNKNOWN"
                     continue
                 status = remote.get("status")
@@ -110,7 +114,8 @@ class ReconciliationWorker:
                 continue
             try:
                 response = await adapter.cancel_order(symbol=sibling.symbol, order_id=sibling.exchange_order_id)
-            except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                logger.warning("sibling cancellation failed for %s: %s", sibling.exchange_order_id, error, exc_info=True)
                 sibling.status = "UNKNOWN"
                 continue
             if response.get("status") == "CANCELED":
