@@ -94,6 +94,7 @@ class BinanceMarketDepthMixin(_DepthContext):
             return SlippageEstimate(side, quantity, reference, Decimal(0), Decimal(0), False)
         with localcontext() as context:
             context.prec = 60
-            average = (notional / quantity).quantize(Decimal("1e-31"))
-            slippage = (((average - reference) / reference * Decimal(10000)) if side == "BUY" else ((reference - average) / reference * Decimal(10000))).quantize(Decimal("1e-31"))
+            exact_average = notional / quantity
+            average = exact_average.quantize(Decimal("1e-31"))
+            slippage = (((exact_average - reference) / reference * Decimal(10000)) if side == "BUY" else ((reference - exact_average) / reference * Decimal(10000))).quantize(Decimal("1e-32"))
         return SlippageEstimate(side, quantity, reference, average, slippage, True)
