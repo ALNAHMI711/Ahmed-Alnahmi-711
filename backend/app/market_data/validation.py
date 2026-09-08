@@ -12,11 +12,17 @@ def validate_kline(kline: KlineRecord, *, now: datetime | None = None) -> KlineR
         raise ValueError("open_time must be strictly earlier than close_time")
 
     # Binance closeTime is the final millisecond in the candle, not an exclusive bound.
-    if kline.close_time != kline.open_time + duration - 1:
-        raise ValueError("close_time must equal open_time plus interval duration minus one millisecond")
+    expected_close = kline.open_time + duration - 1
+    if kline.close_time != expected_close:
+        raise ValueError(
+            "close_time must equal open_time plus interval duration minus one millisecond"
+        )
 
     if kline.interval == KlineInterval.W1:
-        weekday = datetime.fromtimestamp(kline.open_time // 1000, tz=timezone.utc).weekday()
+        weekday = datetime.fromtimestamp(
+            kline.open_time // 1000,
+            tz=timezone.utc,
+        ).weekday()
         if weekday != 0:
             raise ValueError("weekly candle must open on a UTC Monday")
     elif kline.open_time % duration != 0:
