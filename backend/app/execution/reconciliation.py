@@ -1,4 +1,5 @@
 """Reconcile exchange facts into durable projections; fail closed on ambiguity."""
+
 import logging
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
@@ -7,6 +8,7 @@ import httpx
 from sqlalchemy import select
 
 from backend.app.adapters.binance import BinanceAdapter
+
 from .models import ConditionalOrder, ExchangeOrder, Trade
 from .projections import apply_fill, apply_mark
 from .repositories import OrderRepository, ProjectionRepository, TradeRepository
@@ -74,7 +76,7 @@ class ReconciliationWorker:
                 try:
                     remote = await adapter.order_status(symbol, order_id=plan.exchange_order_id)
                 except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error:
-                    logger.warning("conditional status reconciliation failed for %s: %s", plan.exchange_order_id, error, exc_info=True)
+                    logger.warning("conditional status reconciliation failed for %s", plan.exchange_order_id, error, exc_info=True)
                     plan.status = "UNKNOWN"
                     continue
                 status = remote.get("status")
