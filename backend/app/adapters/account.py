@@ -1,10 +1,7 @@
 from decimal import Decimal
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 from .base import AccountEquity, Market
-
-if TYPE_CHECKING:
-    from .binance import BinanceAdapter
 
 
 class _AccountContext(Protocol):
