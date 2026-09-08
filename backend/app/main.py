@@ -121,19 +121,19 @@ def create_api_account(account:ApiAccountCreate,user:AdminUser):
         db.add(ApiAccount(name=account.name,market=account.market,encrypted_key=cipher.encrypt(account.api_key),encrypted_secret=cipher.encrypt(account.api_secret))); db.add(AuditLog(action='API_ADD',result='SUCCESS')); db.commit()
     return {'status':'saved','message':'حُفظ المفتاح مشفرًا ولن يُعرض السر مرة أخرى.'}
 @app.get('/api/v1/portfolio')
-async def portfolio(account_id:str|None=None,user:CurrentUser=None):
+async def portfolio(account_id:str|None=None,user:CurrentUser):
     try:return await _exchange_data(_selected_account(user,account_id),'portfolio')
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':None}
 @app.get('/api/v1/positions')
-async def positions(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
+async def positions(account_id:str|None=None,symbol:str|None=None,user:CurrentUser):
     try:return await _exchange_data(_selected_account(user,account_id),'positions',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/orders')
-async def orders(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
+async def orders(account_id:str|None=None,symbol:str|None=None,user:CurrentUser):
     try:return await _exchange_data(_selected_account(user,account_id),'orders',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/market-data')
-async def market_data(account_id:str|None=None,symbol:str|None=None,user:CurrentUser=None):
+async def market_data(account_id:str|None=None,symbol:str|None=None,user:CurrentUser):
     try:return await _exchange_data(_selected_account(user,account_id),'market',symbol)
     except HTTPException as error:return {'status':'unavailable','reason':error.detail,'data':[]}
 @app.get('/api/v1/alpha/snapshot')
