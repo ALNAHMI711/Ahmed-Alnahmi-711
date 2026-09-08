@@ -1,8 +1,11 @@
 """Unit coverage for WebSocket authentication, allow-list and revocation behavior."""
 import asyncio
 from types import SimpleNamespace
-from backend.app.websocket import WebSocketDispatcher
+
 from fastapi import HTTPException
+
+from backend.app.websocket import WebSocketDispatcher
+
 class Socket:
     def __init__(self, session='token'): self.cookies={'session':session}; self.closed=[]; self.sent=[]
     async def accept(self): pass
