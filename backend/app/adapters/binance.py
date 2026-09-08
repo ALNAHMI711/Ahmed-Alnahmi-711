@@ -10,6 +10,9 @@ from urllib.parse import urlencode
 
 import httpx
 
+from app.market_data import KlineInterval, KlineRecord, validate_kline
+from app.market_data.schemas import utc_now_ms
+
 from .account import BinanceAccountMixin
 from .base import AccountCapabilities, ExchangeAdapter, Market
 from .market_depth import BinanceMarketDepthMixin
@@ -67,6 +70,17 @@ def _objects(value: object) -> list[dict[str, object]]:
     return [cast(dict[str, object], row) for row in value if isinstance(row, dict)]
 
 
+def _kline_rows(value: object) -> list[list[object]]:
+    if not isinstance(value, list):
+        raise TypeError("invalid Binance kline payload")
+    rows: list[list[object]] = []
+    for row in value:
+        if not isinstance(row, list) or len(row) < 11:
+            raise TypeError("invalid Binance kline row")
+        rows.append(cast(list[object], row))
+    return rows
+
+
 class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapter):
     """Binance API adapter. Credentials are supplied only by the encrypted account vault."""
 
@@ -104,6 +118,59 @@ class BinanceAdapter(BinanceAccountMixin, BinanceMarketDepthMixin, ExchangeAdapt
         response.raise_for_status()
         payload = _object(response.json())
         return any(item.get("symbol") == symbol for item in _objects(payload.get("symbols", [])))
+
+    async def klines(
+        self,
+        symbol: str,
+        interval: KlineInterval,
+        *,
+        start_time: int | None = None,
+        end_time: int | None = None,
+        limit: int = 500,
+    ) -> list[KlineRecord]:
+        """Fetch Binance klines and convert them into validated domain records."""
+        if not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        if start_time is not None and start_time < 0:
+            raise ValueError("start_time must be non-negative")
+        if end_time is not None and end_time < 0:
+            raise ValueError("end_time must be non-negative")
+        if start_time is not None and end_time is not None and start_time > end_time:
+            raise ValueError("start_time must not be after end_time")
+
+        path = "/api/v3/klines" if self.market in (Market.SPOT, Market.CROSS_MARGIN, Market.ISOLATED_MARGIN) else ("/dapi/v1/klines" if self.market == Market.COIN_M else "/fapi/v1/klines")
+        params: dict[str, object] = {"symbol": symbol, "interval": interval.value, "limit": limit}
+        if start_time is not None:
+            params["startTime"] = start_time
+        if end_time is not None:
+            params["endTime"] = end_time
+        response = await self.client.get(self.base_url + path, params=params)
+        response.raise_for_status()
+
+        now_ms = utc_now_ms()
+        records: list[KlineRecord] = []
+        for row in _kline_rows(response.json()):
+            open_time = int(cast(int | str, row[0]))
+            close_time = int(cast(int | str, row[6]))
+            record = KlineRecord(
+                market=self.market.value,
+                symbol=symbol,
+                interval=interval,
+                open_time=open_time,
+                close_time=close_time,
+                open=Decimal(cast(str, row[1])),
+                high=Decimal(cast(str, row[2])),
+                low=Decimal(cast(str, row[3])),
+                close=Decimal(cast(str, row[4])),
+                volume=Decimal(cast(str, row[5])),
+                quote_volume=Decimal(cast(str, row[7])),
+                trades=int(cast(int | str, row[8])),
+                is_closed=close_time < now_ms,
+                source="binance",
+            )
+            validate_kline(record, now=now_ms)
+            records.append(record)
+        return records
 
     async def fills(self, symbol: str, start_time: int | None = None) -> list[ExchangeFill]:
         spot = self.market == Market.SPOT
