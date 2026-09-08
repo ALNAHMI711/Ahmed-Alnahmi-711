@@ -72,7 +72,7 @@ async def test_klines_routes_by_market_and_uses_domain_decimals(market, path):
     assert record.volume == Decimal("12.500000")
     assert record.quote_volume == Decimal("1301.250000")
     assert record.trades == 42
-    assert record.is_closed is True
+    assert record.is_closed
 
     await client.aclose()
 
@@ -109,7 +109,7 @@ async def test_klines_passes_time_window_to_binance():
 
 @pytest.mark.asyncio
 async def test_klines_rejects_invalid_limits_before_network():
-    async def handler(request: httpx.Request) -> httpx.Response:
+    async def handler(_request: httpx.Request) -> httpx.Response:
         raise AssertionError("network must not be called")
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -123,7 +123,7 @@ async def test_klines_rejects_invalid_limits_before_network():
 
 @pytest.mark.asyncio
 async def test_klines_rejects_malformed_exchange_row():
-    async def handler(request: httpx.Request) -> httpx.Response:
+    async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[[BASE_OPEN_MS, "100"]])
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
