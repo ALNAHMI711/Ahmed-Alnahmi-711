@@ -1,6 +1,8 @@
 from io import BytesIO
 from zipfile import ZipFile
+
 from backend.app.services.upload_scan import inspect_upload
+
 def test_rejects_dangerous_python():
  assert inspect_upload('bad.py',b'import subprocess\nsubprocess.run([])')['status']=='REJECTED'
 def test_scans_zip_members():
