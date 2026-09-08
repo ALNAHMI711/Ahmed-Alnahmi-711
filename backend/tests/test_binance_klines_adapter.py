@@ -3,10 +3,9 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
-from app.market_data import KlineInterval
-
 from app.adapters.base import Market
 from app.adapters.binance import BinanceAdapter
+from app.market_data import KlineInterval
 
 
 BASE_OPEN_MS = 1_760_000_040_000
