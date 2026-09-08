@@ -32,8 +32,11 @@ class WebSocketDispatcher:
 
     async def connect(self, socket: WebSocket) -> Connection | None:
         session = socket.cookies.get("session")
+        if session is None:
+            await socket.close(code=1008, reason="authentication required")
+            return None
         try:
-            user = self._session_user(session or "")
+            user = self._session_user(session)
         except HTTPException:
             await socket.close(code=1008, reason="authentication required")
             return None
