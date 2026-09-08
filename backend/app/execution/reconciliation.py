@@ -1,6 +1,7 @@
 """Reconcile exchange facts into durable projections; fail closed on ambiguity."""
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
+import httpx
 from sqlalchemy import select
 from backend.app.adapters.binance import BinanceAdapter
 from .models import ConditionalOrder, ExchangeOrder, Trade
@@ -43,8 +44,7 @@ class ReconciliationWorker:
             for order in exchange_orders:
                 try:
                     remote = await adapter.order_status(symbol, order_id=order.exchange_order_id, client_order_id=None if order.exchange_order_id else order.client_request_id)
-                except Exception:
-                    # Unknown venue state is never converted to CANCELED/FILLED. Retry next cycle.
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
                     if order.status not in _TERMINAL:
                         orders.update_status(order, "UNKNOWN")
                     continue
@@ -56,8 +56,6 @@ class ReconciliationWorker:
                 if remote_status == "FILLED":
                     await self._reconcile_exit_siblings(db, adapter, order, position, emitted)
 
-            # Conditional orders are reconciled independently so a restart cannot leave
-            # a submitted TP/SL permanently invisible to recovery.
             plans = list(db.scalars(select(ConditionalOrder).where(
                 ConditionalOrder.account_id == account_id,
                 ConditionalOrder.market == market,
@@ -70,7 +68,7 @@ class ReconciliationWorker:
                     continue
                 try:
                     remote = await adapter.order_status(symbol, order_id=plan.exchange_order_id)
-                except Exception:
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
                     plan.status = "UNKNOWN"
                     continue
                 status = remote.get("status")
@@ -108,12 +106,11 @@ class ReconciliationWorker:
             if remaining and sibling.quantity <= remaining and sibling.status != "UNKNOWN":
                 continue
             if not sibling.exchange_order_id:
-                # Missing exchange identity is ambiguous; do not invent cancellation.
                 sibling.status = "UNKNOWN"
                 continue
             try:
                 response = await adapter.cancel_order(symbol=sibling.symbol, order_id=sibling.exchange_order_id)
-            except Exception:
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
                 sibling.status = "UNKNOWN"
                 continue
             if response.get("status") == "CANCELED":
