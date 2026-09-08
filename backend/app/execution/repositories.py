@@ -37,6 +37,12 @@ class ProjectionRepository:
             result = Position(account_id=account_id, market=market, symbol=symbol)
             self.db.add(result); self.db.flush()
         return result
+    def fills_for_position(self, account_id: str, market: str, symbol: str, current: Trade | None = None) -> list[Trade]:
+        fills = list(self.db.scalars(select(Trade).where(Trade.account_id == account_id, Trade.market == market, Trade.symbol == symbol).order_by(Trade.occurred_at, Trade.exchange_trade_id)))
+        if current is not None and all(item.exchange_trade_id != current.exchange_trade_id for item in fills):
+            fills.append(current)
+            fills.sort(key=lambda item: (item.occurred_at, item.exchange_trade_id))
+        return fills
     def add_funding_once(self, account_id: str, market: str, symbol: str, event_id: str, amount: Decimal, occurred_at: datetime) -> bool:
         if not self.claim_event(f"funding:{account_id}:{market}:{event_id}", account_id, "funding", occurred_at): return False
         position = self.get_or_create_position(account_id, market, symbol)
