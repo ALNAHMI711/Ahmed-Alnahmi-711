@@ -1,15 +1,21 @@
 """Production boundary for manual orders; secrets never leave this module."""
 from decimal import Decimal
+
 import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
+
 from backend.app.adapters.base import Market
 from backend.app.adapters.binance import BinanceAdapter
 from backend.app.database import ApiAccount, ApiAccountOwner, KillSwitch
-from backend.app.security.crypto import SecretCipher
 from backend.app.execution.models import ExchangeOrder
+from backend.app.execution.orders import (
+    ExecutionRejected,
+    ExecutionService,
+    OrderIntent,
+)
 from backend.app.execution.repositories import OrderRepository
-from backend.app.execution.orders import ExecutionService, OrderIntent, ExecutionRejected
+from backend.app.security.crypto import SecretCipher
 from risk.engine import RiskLimits, evaluate
 
 async def submit_manual(db, user, body):
