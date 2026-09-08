@@ -57,7 +57,7 @@ async def test_partial_fill_cancels_oversized_sibling_without_replacement():
 
 
 @pytest.mark.asyncio
-async def test_cancel_failure_does_not_fabricate_sibling_canceled():
+async def test_unconfirmed_sibling_cancellation_fails_closed():
     filled = ExchangeOrder(account_id="a", market="USDS_M", symbol="BTCUSDT", client_request_id="x", side="SELL", order_type="STOP_MARKET", quantity=Decimal(1))
     filled.id = "parent"
     plan = ConditionalOrder(account_id="a", market="USDS_M", symbol="BTCUSDT", kind="SL", side="SELL", quantity=Decimal(1), idempotency_key="sl", position_id="p", parent_order_id="parent")
@@ -66,4 +66,4 @@ async def test_cancel_failure_does_not_fabricate_sibling_canceled():
     adapter = _Adapter({"status": "NEW", "orderId": "99"})
     worker = ReconciliationWorker(lambda: None, lambda *_: adapter)
     await worker._reconcile_exit_siblings(db, adapter, filled, Position(account_id="a", market="USDS_M", symbol="BTCUSDT", quantity=Decimal(0)), [])
-    assert sibling.status == "SUBMITTED"
+    assert sibling.status == "UNKNOWN"
