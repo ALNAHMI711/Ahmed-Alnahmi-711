@@ -8,14 +8,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.13'}
-      - run: pip install -r requirements.txt pytest ruff mypy pip-audit
+      - run: pip install -r requirements.txt pytest pytest-asyncio ruff mypy pip-audit
       - run: python -m compileall backend execution tests
       - name: Run execution safety tests
-        run: PYTHONPATH=backend:. python -m pytest -q tests/test_reconciliation_races.py tests/test_conditional_risk_reconciliation.py tests/test_tp_sl_reconciliation_safety.py tests/test_tp_sl_mapping.py
+        run: PYTHONPATH=backend:. python -m pytest --import-mode=importlib -q tests/test_reconciliation_races.py tests/test_conditional_risk_reconciliation.py tests/test_tp_sl_reconciliation_safety.py tests/test_tp_sl_mapping.py
       - name: Ruff strict audit
         run: ruff check backend modules risk signals tests
       - run: mypy --ignore-missing-imports backend
-      - run: PYTHONPATH=backend:. python -m pytest -q
+      - run: PYTHONPATH=backend:. python -m pytest --import-mode=importlib -q
       - run: pip-audit -r requirements.txt
       - run: docker build .
   frontend:
