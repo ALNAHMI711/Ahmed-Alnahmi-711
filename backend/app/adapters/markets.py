@@ -1,29 +1,28 @@
 from .base import ExchangeAdapter, Market
 from .binance import BinanceAdapter
-from .market_depth import BinanceMarketDepthMixin
 
 
-class SpotAdapter(BinanceMarketDepthMixin, BinanceAdapter):
+class SpotAdapter(BinanceAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(Market.SPOT, *args, **kwargs)
 
 
-class CrossMarginAdapter(BinanceMarketDepthMixin, BinanceAdapter):
+class CrossMarginAdapter(BinanceAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(Market.CROSS_MARGIN, *args, **kwargs)
 
 
-class IsolatedMarginAdapter(BinanceMarketDepthMixin, BinanceAdapter):
+class IsolatedMarginAdapter(BinanceAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(Market.ISOLATED_MARGIN, *args, **kwargs)
 
 
-class USDSMAdapter(BinanceMarketDepthMixin, BinanceAdapter):
+class USDSMAdapter(BinanceAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(Market.USDS_M, *args, **kwargs)
 
 
-class COINMAdapter(BinanceMarketDepthMixin, BinanceAdapter):
+class COINMAdapter(BinanceAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(Market.COIN_M, *args, **kwargs)
 
