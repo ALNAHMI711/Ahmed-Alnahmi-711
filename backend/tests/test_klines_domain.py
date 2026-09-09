@@ -6,9 +6,9 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import Table, UniqueConstraint
 
-from backend.app.market_data.models import Kline
-from backend.app.market_data.schemas import KlineInterval, KlineRecord
-from backend.app.market_data.validation import validate_kline
+from app.market_data.models import Kline
+from app.market_data.schemas import KlineInterval, KlineRecord
+from app.market_data.validation import validate_kline
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 NOW_MS = 1_767_226_200_000
