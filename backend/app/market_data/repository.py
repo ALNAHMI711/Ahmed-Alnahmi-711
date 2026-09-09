@@ -1,7 +1,6 @@
 """Persistence operations for validated market candles."""
 from collections.abc import Sequence
 from datetime import datetime
-from typing import cast
 
 from sqlalchemy import Select, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -62,7 +61,10 @@ class KlineRepository:
         ).returning(Kline.id)
         row_id = self.session.execute(statement).scalar_one()
         self.session.flush()
-        return self.session.get(Kline, row_id)  # type: ignore[return-value]
+        row = self.session.get(Kline, row_id)
+        if row is None:
+            raise RuntimeError("Kline upsert returned no persisted row")
+        return row
 
     def _fallback_upsert(self, kline: KlineRecord) -> Kline:
         """Portable fallback for dialects without native conflict handling."""
