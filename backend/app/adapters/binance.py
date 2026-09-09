@@ -9,8 +9,8 @@ from typing import cast
 from urllib.parse import urlencode
 
 import httpx
-from app.market_data import KlineInterval, KlineRecord, validate_kline
-from app.market_data.schemas import utc_now_ms
+from backend.app.market_data import KlineInterval, KlineRecord, validate_kline
+from backend.app.market_data.schemas import utc_now_ms
 
 from .account import BinanceAccountMixin
 from .base import AccountCapabilities, ExchangeAdapter, Market
