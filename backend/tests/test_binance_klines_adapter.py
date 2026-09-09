@@ -62,7 +62,7 @@ async def test_klines_routes_by_market_and_uses_domain_decimals(market, path):
     assert seen["params"] == {"symbol": "BTCUSDT", "interval": "1m", "limit": "1"}
     assert len(records) == 1
     record = records[0]
-    assert record.market == market.value
+    assert record.market == market.name
     assert record.symbol == "BTCUSDT"
     assert record.open == Decimal("100.10")
     assert record.high == Decimal("105.20")
