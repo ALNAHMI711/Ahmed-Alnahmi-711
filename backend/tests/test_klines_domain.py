@@ -3,11 +3,12 @@ from decimal import Decimal
 from typing import cast
 
 import pytest
-from app.market_data.models import Kline
-from app.market_data.schemas import KlineInterval, KlineRecord
-from app.market_data.validation import validate_kline
 from pydantic import ValidationError
 from sqlalchemy import Table, UniqueConstraint
+
+from backend.app.market_data.models import Kline
+from backend.app.market_data.schemas import KlineInterval, KlineRecord
+from backend.app.market_data.validation import validate_kline
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 NOW_MS = 1_767_226_200_000
@@ -76,11 +77,11 @@ def test_forming_candle_may_have_future_close_boundary() -> None:
 
 def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="high"):
-        validate_kline(candle(high=Decimal(104)), now=NOW)
+        validate_kline(candle(high=104), now=NOW)
     with pytest.raises(ValueError, match="low"):
-        validate_kline(candle(low=Decimal(106)), now=NOW)
+        validate_kline(candle(low=106), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
-        validate_kline(candle(volume=Decimal(-1)), now=NOW)
+        validate_kline(candle(volume=-1), now=NOW)
 
 
 def test_schema_rejects_non_finite_decimal() -> None:
