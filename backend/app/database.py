@@ -1,5 +1,6 @@
 """Persistence boundary. Secrets are encrypted before ORM persistence."""
 from datetime import datetime, timezone
+from importlib import import_module
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, create_engine
@@ -81,10 +82,9 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
 
 
 def init_database() -> None:
-    # Register execution and market-data models before create_all for development SQLite deployments.
-    import backend.app.execution.models
-    import backend.app.market_data.models as _market_data_models
-
+    # Register ORM models before create_all for development SQLite deployments.
+    import_module("backend.app.execution.models")
+    import_module("backend.app.market_data.models")
     Base.metadata.create_all(engine)
 
 
