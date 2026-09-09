@@ -9,6 +9,7 @@ from typing import cast
 from urllib.parse import urlencode
 
 import httpx
+
 from backend.app.market_data import KlineInterval, KlineRecord, validate_kline
 from backend.app.market_data.schemas import utc_now_ms
 
