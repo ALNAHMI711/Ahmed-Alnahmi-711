@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import Table
 
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
@@ -43,22 +45,23 @@ def candle(
 
 
 def test_decimal_contract_rejects_float_injection() -> None:
+    payload: dict[str, object] = {
+        "market": "spot",
+        "symbol": "BTCUSDT",
+        "interval": KlineInterval.M1,
+        "open_time": 600_000,
+        "close_time": 659_999,
+        "open": 100.0,
+        "high": 105.0,
+        "low": 99.0,
+        "close": 104.0,
+        "volume": 1.0,
+        "quote_volume": 157.5,
+        "trades": 10,
+        "is_closed": True,
+    }
     with pytest.raises(ValidationError, match="finite Decimal"):
-        KlineRecord(
-            market="spot",
-            symbol="BTCUSDT",
-            interval=KlineInterval.M1,
-            open_time=600_000,
-            close_time=659_999,
-            open=100.0,
-            high=105.0,
-            low=99.0,
-            close=104.0,
-            volume=1.0,
-            quote_volume=157.5,
-            trades=10,
-            is_closed=True,
-        )
+        KlineRecord.model_validate(payload)
 
 
 def test_temporal_contract_is_strict() -> None:
@@ -91,9 +94,9 @@ def test_forming_candle_cannot_have_ended() -> None:
 
 def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="high"):
-        validate_kline(candle(high=104), now=NOW)
+        validate_kline(candle(high=Decimal(104)), now=NOW)
     with pytest.raises(ValueError, match="low"):
-        validate_kline(candle(low=106), now=NOW)
+        validate_kline(candle(low=Decimal(106)), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
         validate_kline(candle(volume=Decimal(-1)), now=NOW)
     with pytest.raises(ValueError, match="positive"):
@@ -101,7 +104,8 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
 
 
 def test_unique_constraint_matches_domain_key() -> None:
-    constraints = {constraint for constraint in Kline.__table__.constraints if constraint.name == "uq_market_klines_domain_key"}
+    table = cast(Table, Kline.__table__)
+    constraints = {constraint for constraint in table.constraints if constraint.name == "uq_market_klines_domain_key"}
     assert len(constraints) == 1
     constraint = next(iter(constraints))
     assert {column.name for column in constraint.columns} == {"market", "symbol", "interval", "open_time"}
