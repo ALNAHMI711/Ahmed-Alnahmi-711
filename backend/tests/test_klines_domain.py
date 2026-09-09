@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Table
+from sqlalchemy import Table, UniqueConstraint
 
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
@@ -107,5 +107,5 @@ def test_unique_constraint_matches_domain_key() -> None:
     table = cast(Table, Kline.__table__)
     constraints = {constraint for constraint in table.constraints if constraint.name == "uq_market_klines_domain_key"}
     assert len(constraints) == 1
-    constraint = next(iter(constraints))
+    constraint = cast(UniqueConstraint, next(iter(constraints)))
     assert {column.name for column in constraint.columns} == {"market", "symbol", "interval", "open_time"}
