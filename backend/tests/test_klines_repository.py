@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -31,7 +32,7 @@ def candle(open_time: int, *, close: Decimal = Decimal(105)) -> KlineRecord:
 
 
 @pytest.fixture()
-def session() -> Session:
+def session() -> Generator[Session, None, None]:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as db_session:
