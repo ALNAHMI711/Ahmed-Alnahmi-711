@@ -95,9 +95,9 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="low"):
         validate_kline(candle(low=106), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
-        validate_kline(candle(volume=Decimal("-1")), now=NOW)
+        validate_kline(candle(volume=Decimal(-1)), now=NOW)
     with pytest.raises(ValueError, match="positive"):
-        validate_kline(candle(open=Decimal("0")), now=NOW)
+        validate_kline(candle(open=Decimal(0)), now=NOW)
 
 
 def test_unique_constraint_matches_domain_key() -> None:
