@@ -1,6 +1,7 @@
 """Persistence operations for validated market candles."""
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -44,22 +45,23 @@ class KlineRepository:
         dialect = self.session.bind.dialect.name if self.session.bind is not None else ""
 
         if dialect == "postgresql":
-            statement = pg_insert(Kline).values(**values)
-        elif dialect == "sqlite":
-            statement = sqlite_insert(Kline).values(**values)
-        else:
-            return self._fallback_upsert(validated)
+            return self._native_upsert(pg_insert(Kline).values(**values), values)
+        if dialect == "sqlite":
+            return self._native_upsert(sqlite_insert(Kline).values(**values), values)
+        return self._fallback_upsert(validated)
 
+    def _native_upsert(self, statement: Any, values: dict[str, object]) -> Kline:
+        """Execute a dialect-specific ON CONFLICT upsert and return its row."""
         update_values = {
             key: statement.excluded[key]
             for key in values
             if key not in {"market", "symbol", "interval", "open_time"}
         }
-        statement = statement.on_conflict_do_update(
+        conflict_statement = statement.on_conflict_do_update(
             index_elements=["market", "symbol", "interval", "open_time"],
             set_=update_values,
         ).returning(Kline.id)
-        row_id = self.session.execute(statement).scalar_one()
+        row_id = self.session.execute(conflict_statement).scalar_one()
         self.session.flush()
         row = self.session.get(Kline, row_id)
         if row is None:
