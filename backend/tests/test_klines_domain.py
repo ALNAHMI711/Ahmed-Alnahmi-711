@@ -65,7 +65,7 @@ def test_decimal_contract_rejects_float_injection() -> None:
 
 
 def test_temporal_contract_is_strict() -> None:
-    with pytest.raises(ValueError, match="open_time must be before close_time"):
+    with pytest.raises(ValueError, match="strictly earlier"):
         validate_kline(candle(close_time=600_000), now=NOW)
     with pytest.raises(ValueError, match="close_time must equal"):
         validate_kline(candle(close_time=660_000), now=NOW)
@@ -82,21 +82,21 @@ def test_future_candle_is_rejected() -> None:
 
 
 def test_closed_candle_must_have_ended() -> None:
-    future_open = int(NOW.timestamp() * 1000) - 10_000
+    current_boundary = (int(NOW.timestamp() * 1000) // 60_000) * 60_000
     with pytest.raises(ValueError, match="closed candle"):
-        validate_kline(candle(open_time=future_open, is_closed=True), now=NOW)
+        validate_kline(candle(open_time=current_boundary, is_closed=True), now=NOW)
 
 
 def test_forming_candle_cannot_have_ended() -> None:
-    with pytest.raises(ValueError, match="forming candle"):
+    with pytest.raises(ValueError, match="ended candle"):
         validate_kline(candle(open_time=600_000, is_closed=False), now=NOW)
 
 
 def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="high"):
-        validate_kline(candle(high=Decimal(104)), now=NOW)
+        validate_kline(candle(high=Decimal(103)), now=NOW)
     with pytest.raises(ValueError, match="low"):
-        validate_kline(candle(low=Decimal(106)), now=NOW)
+        validate_kline(candle(low=Decimal(105)), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
         validate_kline(candle(volume=Decimal(-1)), now=NOW)
     with pytest.raises(ValueError, match="positive"):
@@ -105,7 +105,7 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
 
 def test_unique_constraint_matches_domain_key() -> None:
     table = cast(Table, Kline.__table__)
-    constraints = {constraint for constraint in table.constraints if constraint.name == "uq_market_klines_domain_key"}
+    constraints = {constraint for constraint in table.constraints if constraint.name == "uq_market_kline_candle"}
     assert len(constraints) == 1
     constraint = cast(UniqueConstraint, next(iter(constraints)))
     assert {column.name for column in constraint.columns} == {"market", "symbol", "interval", "open_time"}
