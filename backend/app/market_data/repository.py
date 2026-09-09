@@ -66,6 +66,7 @@ class KlineRepository:
         row = self.session.get(Kline, row_id)
         if row is None:
             raise RuntimeError("Kline upsert returned no persisted row")
+        self.session.refresh(row)
         return row
 
     def _fallback_upsert(self, kline: KlineRecord) -> Kline:
