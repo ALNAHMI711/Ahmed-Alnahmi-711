@@ -2,12 +2,13 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Numeric, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.database import Base
 
 KLINE_DECIMAL = Numeric(60, 30)
+KLINE_ID = BigInteger().with_variant(Integer(), "sqlite")
 
 
 class Kline(Base):
@@ -22,7 +23,7 @@ class Kline(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(KLINE_ID, primary_key=True, autoincrement=True)
     market: Mapped[str] = mapped_column(String(32), index=True)
     symbol: Mapped[str] = mapped_column(String(32), index=True)
     interval: Mapped[str] = mapped_column(String(8), index=True)
