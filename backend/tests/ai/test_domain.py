@@ -1,11 +1,19 @@
 """Comprehensive tests for the AI domain contracts and boundaries."""
+
 from abc import ABC
 from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
 
-from app.ai.domain import Decision, Feature, FeatureVector, ModelOutput, RiskDecision, Signal
+from app.ai.domain import (
+    Decision,
+    Feature,
+    FeatureVector,
+    ModelOutput,
+    RiskDecision,
+    Signal,
+)
 from app.ai.policy import DecisionPolicy
 from app.ai.registry import ModelRegistry
 
@@ -43,13 +51,13 @@ def test_feature_vector_rejects_duplicate_names_and_mutable_input() -> None:
     with pytest.raises(ValidationError):
         FeatureVector(
             features=(
-                Feature(name="rsi", value=Decimal("1")),
-                Feature(name="rsi", value=Decimal("2")),
+                Feature(name="rsi", value=Decimal(1)),
+                Feature(name="rsi", value=Decimal(2)),
             ),
             as_of_ms=1,
         )
     with pytest.raises(ValidationError):
-        FeatureVector(features=[Feature(name="rsi", value=Decimal("1"))], as_of_ms=1)
+        FeatureVector(features=[Feature(name="rsi", value=Decimal(1))], as_of_ms=1)
 
 
 def test_feature_rejects_non_finite_decimal() -> None:
@@ -65,7 +73,7 @@ def test_model_output_validates_decimal_confidence_and_bounds() -> None:
         ModelOutput(
             signal=Signal.BUY,
             confidence=1.1,
-            score=Decimal("1"),
+            score=Decimal(1),
             model_name="m",
             model_version="v1",
         )
@@ -73,7 +81,7 @@ def test_model_output_validates_decimal_confidence_and_bounds() -> None:
         ModelOutput(
             signal=Signal.BUY,
             confidence=Decimal("-0.01"),
-            score=Decimal("1"),
+            score=Decimal(1),
             model_name="m",
             model_version="v1",
         )
@@ -121,7 +129,7 @@ def test_risk_decision_rejects_float_contamination_and_invalid_ranges() -> None:
     with pytest.raises(ValidationError):
         RiskDecision(
             approved=True,
-            max_notional=Decimal("1"),
+            max_notional=Decimal(1),
             stop_loss_pct=Decimal("1.01"),
             take_profit_pct=Decimal("0.04"),
             rationale="bad",
