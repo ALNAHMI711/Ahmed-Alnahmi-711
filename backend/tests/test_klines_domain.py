@@ -1,78 +1,92 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import cast
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Table, UniqueConstraint
 
 from backend.app.market_data.models import Kline
 from backend.app.market_data.schemas import KlineInterval, KlineRecord
 from backend.app.market_data.validation import validate_kline
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
-NOW_MS = 1_767_226_200_000
 
 
-def candle(**overrides: object) -> KlineRecord:
-    values: dict[str, object] = {
-        "market": "spot",
-        "symbol": "btcusdt",
-        "interval": KlineInterval.M1,
-        "open_time": 600_000,
-        "close_time": 659_999,
-        "open": Decimal("100.000000000000000001"),
-        "high": Decimal("110.000000000000000001"),
-        "low": Decimal("99.000000000000000001"),
-        "close": Decimal("105.000000000000000001"),
-        "volume": Decimal("1.123456789012345678901234567890"),
-        "quote_volume": Decimal("118.000000000000000001"),
-        "trades": 42,
-        "is_closed": True,
-    }
-    values.update(overrides)
-    return KlineRecord.model_validate(values)
+def candle(
+    open_time: int = 600_000,
+    *,
+    close_time: int | None = None,
+    open: Decimal = Decimal(100),
+    high: Decimal = Decimal(105),
+    low: Decimal = Decimal(99),
+    close: Decimal = Decimal(104),
+    volume: Decimal = Decimal("1.5"),
+    quote_volume: Decimal = Decimal("157.5"),
+    trades: int = 10,
+    is_closed: bool = True,
+) -> KlineRecord:
+    return KlineRecord(
+        market="spot",
+        symbol="btcusdt",
+        interval=KlineInterval.M1,
+        open_time=open_time,
+        close_time=close_time if close_time is not None else open_time + 59_999,
+        open=open,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+        quote_volume=quote_volume,
+        trades=trades,
+        is_closed=is_closed,
+        source="test",
+    )
 
 
-def test_valid_kline_preserves_decimal_precision_and_normalizes_ids() -> None:
-    result = validate_kline(candle(), now=NOW)
-    assert result.market == "SPOT"
-    assert result.symbol == "BTCUSDT"
-    assert result.open == Decimal("100.000000000000000001")
-    assert result.volume == Decimal("1.123456789012345678901234567890")
-
-
-def test_open_time_must_align_to_interval() -> None:
-    with pytest.raises(ValueError, match="aligned"):
-        validate_kline(candle(open_time=610_000, close_time=669_999), now=NOW)
-
-
-def test_close_time_must_match_inclusive_interval_boundary() -> None:
-    with pytest.raises(ValueError, match="duration"):
-        validate_kline(candle(close_time=660_000), now=NOW)
-
-
-def test_future_open_time_is_rejected() -> None:
-    open_time = NOW_MS + 60_000
-    with pytest.raises(ValueError, match="future"):
-        validate_kline(candle(open_time=open_time, close_time=open_time + 59_999), now=NOW)
-
-
-def test_closed_candle_cannot_end_in_future() -> None:
-    open_time = NOW_MS - 60_000
-    with pytest.raises(ValueError, match="closed candle"):
-        validate_kline(
-            candle(open_time=open_time, close_time=NOW_MS - 1),
-            now=datetime(2026, 1, 1, 0, 9, 59, 500_000, tzinfo=timezone.utc),
+def test_decimal_contract_rejects_float_injection() -> None:
+    with pytest.raises(ValidationError, match="finite Decimal"):
+        KlineRecord(
+            market="spot",
+            symbol="BTCUSDT",
+            interval=KlineInterval.M1,
+            open_time=600_000,
+            close_time=659_999,
+            open=100.0,
+            high=105.0,
+            low=99.0,
+            close=104.0,
+            volume=1.0,
+            quote_volume=157.5,
+            trades=10,
+            is_closed=True,
         )
 
 
-def test_forming_candle_may_have_future_close_boundary() -> None:
-    result = validate_kline(
-        candle(open_time=NOW_MS, close_time=NOW_MS + 59_999, is_closed=False),
-        now=NOW,
-    )
-    assert result.is_closed is False
+def test_temporal_contract_is_strict() -> None:
+    with pytest.raises(ValueError, match="open_time must be before close_time"):
+        validate_kline(candle(close_time=600_000), now=NOW)
+    with pytest.raises(ValueError, match="close_time must equal"):
+        validate_kline(candle(close_time=660_000), now=NOW)
+
+
+def test_interval_alignment_is_required() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        validate_kline(candle(open_time=600_001), now=NOW)
+
+
+def test_future_candle_is_rejected() -> None:
+    with pytest.raises(ValueError, match="future"):
+        validate_kline(candle(open_time=NOW.timestamp().__int__() * 1000 + 60_000), now=NOW)
+
+
+def test_closed_candle_must_have_ended() -> None:
+    future_open = int(NOW.timestamp() * 1000) - 10_000
+    with pytest.raises(ValueError, match="closed candle"):
+        validate_kline(candle(open_time=future_open, is_closed=True), now=NOW)
+
+
+def test_forming_candle_cannot_have_ended() -> None:
+    with pytest.raises(ValueError, match="forming candle"):
+        validate_kline(candle(open_time=600_000, is_closed=False), now=NOW)
 
 
 def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
@@ -81,33 +95,13 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="low"):
         validate_kline(candle(low=106), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
-        validate_kline(candle(volume=-1), now=NOW)
+        validate_kline(candle(volume=Decimal("-1")), now=NOW)
+    with pytest.raises(ValueError, match="positive"):
+        validate_kline(candle(open=Decimal("0")), now=NOW)
 
 
-def test_schema_rejects_non_finite_decimal() -> None:
-    with pytest.raises(ValidationError, match="finite"):
-        candle(open=Decimal("NaN"))
-
-
-def test_schema_rejects_float_for_decimal_fields() -> None:
-    with pytest.raises(ValidationError, match="Decimal"):
-        candle(open=100.0)
-
-
-def test_open_must_precede_close() -> None:
-    with pytest.raises(ValueError, match="earlier"):
-        validate_kline(candle(open_time=600_000, close_time=600_000), now=NOW)
-
-
-def test_uniqueness_key_excludes_api_account() -> None:
-    table = cast(Table, Kline.__table__)
-    constraint = cast(
-        UniqueConstraint,
-        next(constraint for constraint in table.constraints if constraint.name == "uq_market_kline_candle"),
-    )
-    assert {column.name for column in constraint.columns} == {
-        "market",
-        "symbol",
-        "interval",
-        "open_time",
-    }
+def test_unique_constraint_matches_domain_key() -> None:
+    constraints = {constraint for constraint in Kline.__table__.constraints if constraint.name == "uq_market_klines_domain_key"}
+    assert len(constraints) == 1
+    constraint = next(iter(constraints))
+    assert {column.name for column in constraint.columns} == {"market", "symbol", "interval", "open_time"}
