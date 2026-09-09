@@ -82,9 +82,9 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
 
 
 def init_database() -> None:
-    # Register ORM models before create_all for development SQLite deployments.
+    # Register execution and market-data ORM packages before create_all for development SQLite deployments.
     import_module("backend.app.execution.models")
-    import_module("backend.app.market_data.models")
+    import_module("backend.app.market_data")
     Base.metadata.create_all(engine)
 
 
