@@ -3,12 +3,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
-from app.database import Base
-from app.market_data.models import Kline
-from app.market_data.repository import KlineRepository
-from app.market_data.schemas import KlineInterval, KlineRecord
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
+
+from backend.app.database import Base
+from backend.app.market_data.models import Kline
+from backend.app.market_data.repository import KlineRepository
+from backend.app.market_data.schemas import KlineInterval, KlineRecord
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 
