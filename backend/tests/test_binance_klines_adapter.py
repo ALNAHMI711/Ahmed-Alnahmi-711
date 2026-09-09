@@ -3,6 +3,7 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
+
 from backend.app.adapters.base import Market
 from backend.app.adapters.binance import BinanceAdapter
 from backend.app.market_data import KlineInterval
