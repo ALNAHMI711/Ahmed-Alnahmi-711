@@ -1,3 +1,5 @@
+"""Domain contract tests for strict Kline validation."""
+
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import cast
