@@ -3,12 +3,11 @@ from decimal import Decimal
 from typing import cast
 
 import pytest
-from pydantic import ValidationError
-from sqlalchemy import Table, UniqueConstraint
-
 from app.market_data.models import Kline
 from app.market_data.schemas import KlineInterval, KlineRecord
 from app.market_data.validation import validate_kline
+from pydantic import ValidationError
+from sqlalchemy import Table, UniqueConstraint
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 NOW_MS = 1_767_226_200_000
