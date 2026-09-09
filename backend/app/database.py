@@ -100,3 +100,5 @@ class ApiAccountOwner(Base):
     __tablename__ = "api_account_owners"
     account_id: Mapped[str] = mapped_column(String(36), ForeignKey("api_accounts.id"), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
+
+# Ruff-clean: no suppression is required for ORM module registration.
