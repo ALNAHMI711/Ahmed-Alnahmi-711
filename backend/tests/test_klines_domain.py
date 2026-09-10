@@ -96,11 +96,11 @@ def test_forming_candle_cannot_have_ended() -> None:
 
 def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="high"):
-        validate_kline(candle(high=103), now=NOW)
+        validate_kline(candle(high=Decimal(104)), now=NOW)
     with pytest.raises(ValueError, match="low"):
-        validate_kline(candle(low=105), now=NOW)
+        validate_kline(candle(low=Decimal(106)), now=NOW)
     with pytest.raises(ValueError, match="non-negative"):
-        validate_kline(candle(volume=-1), now=NOW)
+        validate_kline(candle(volume=Decimal(-1)), now=NOW)
     with pytest.raises(ValueError, match="positive"):
         validate_kline(candle(open=0), now=NOW)
 
