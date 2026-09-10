@@ -1,6 +1,6 @@
 """Domain contract tests for strict Kline validation."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import cast
 
@@ -19,7 +19,7 @@ def candle(
     open_time: int = 600_000,
     *,
     close_time: int | None = None,
-    open: Decimal = Decimal(100),
+    open_price: Decimal = Decimal(100),
     high: Decimal = Decimal(105),
     low: Decimal = Decimal(99),
     close: Decimal = Decimal(104),
@@ -34,7 +34,7 @@ def candle(
         interval=KlineInterval.M1,
         open_time=open_time,
         close_time=close_time if close_time is not None else open_time + 59_999,
-        open=open,
+        open=open_price,
         high=high,
         low=low,
         close=close,
@@ -79,12 +79,14 @@ def test_interval_alignment_is_required() -> None:
 
 
 def test_future_candle_is_rejected() -> None:
+    future_open = int((NOW + timedelta(minutes=1)).timestamp() * 1000)
     with pytest.raises(ValueError, match="future"):
-        validate_kline(candle(open_time=NOW.timestamp().__int__() * 1000 + 60_000), now=NOW)
+        validate_kline(candle(open_time=future_open), now=NOW)
 
 
 def test_closed_candle_must_have_ended() -> None:
-    current_boundary = (int(NOW.timestamp() * 1000) // 60_000) * 60_000
+    now_ms = int(NOW.timestamp() * 1000)
+    current_boundary = (now_ms // 60_000) * 60_000
     with pytest.raises(ValueError, match="closed candle"):
         validate_kline(candle(open_time=current_boundary, is_closed=True), now=NOW)
 
@@ -102,7 +104,7 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
     with pytest.raises(ValueError, match="non-negative"):
         validate_kline(candle(volume=Decimal(-1)), now=NOW)
     with pytest.raises(ValueError, match="positive"):
-        validate_kline(candle(open=0), now=NOW)
+        validate_kline(candle(open_price=Decimal(0)), now=NOW)
 
 
 def test_unique_constraint_matches_domain_key() -> None:
