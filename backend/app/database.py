@@ -1,5 +1,6 @@
 """Persistence boundary. Secrets are encrypted before ORM persistence."""
 from datetime import datetime, timezone
+from importlib import import_module
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, create_engine
@@ -82,8 +83,8 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
 
 def init_database() -> None:
     # Register execution and market-data models before create_all for development SQLite deployments.
-    import backend.app.execution.models
-    import backend.app.market_data.models as _market_data_models
+    import_module("backend.app.execution.models")
+    import_module("backend.app.market_data.models")
 
     Base.metadata.create_all(engine)
 
@@ -92,7 +93,11 @@ class KillSwitch(Base):
     __tablename__ = "kill_switches"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default="global")
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
