@@ -3,8 +3,8 @@
 from abc import ABC
 from decimal import Decimal
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from app.ai.domain import (
     Decision,
