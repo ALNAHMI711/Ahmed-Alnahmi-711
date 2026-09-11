@@ -79,7 +79,9 @@ def test_interval_alignment_is_required() -> None:
 
 
 def test_future_candle_is_rejected() -> None:
-    future_open = int((NOW + timedelta(minutes=1)).timestamp() * 1000)
+    future_open = int(
+        (NOW + timedelta(minutes=1)).timestamp() * 1000
+    )
     with pytest.raises(ValueError, match="future"):
         validate_kline(candle(open_time=future_open), now=NOW)
 
@@ -109,7 +111,16 @@ def test_ohlc_and_volume_invariants_are_fail_closed() -> None:
 
 def test_unique_constraint_matches_domain_key() -> None:
     table = cast(Table, Kline.__table__)
-    constraints = {constraint for constraint in table.constraints if constraint.name == "uq_market_kline_candle"}
+    constraints = {
+        constraint
+        for constraint in table.constraints
+        if constraint.name == "uq_market_kline_candle"
+    }
     assert len(constraints) == 1
     constraint = cast(UniqueConstraint, next(iter(constraints)))
-    assert {column.name for column in constraint.columns} == {"market", "symbol", "interval", "open_time"}
+    assert {column.name for column in constraint.columns} == {
+        "market",
+        "symbol",
+        "interval",
+        "open_time",
+    }

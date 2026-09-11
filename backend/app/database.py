@@ -15,7 +15,9 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "users"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
     username: Mapped[str] = mapped_column(String(120), unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(32), default="viewer")
@@ -24,7 +26,9 @@ class User(Base):
 
 class DbSession(Base):
     __tablename__ = "sessions"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
     user_id: Mapped[str] = mapped_column(String(36))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
@@ -33,7 +37,9 @@ class DbSession(Base):
 
 class ApiAccount(Base):
     __tablename__ = "api_accounts"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
     name: Mapped[str] = mapped_column(String(120), unique=True)
     market: Mapped[str] = mapped_column(String(32))
     encrypted_key: Mapped[str] = mapped_column(Text)
