@@ -4,8 +4,6 @@ from abc import ABC
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
-
 from app.ai.domain import (
     Decision,
     Feature,
@@ -16,6 +14,7 @@ from app.ai.domain import (
 )
 from app.ai.policy import DecisionPolicy
 from app.ai.registry import ModelRegistry
+from pydantic import ValidationError
 
 
 def vector() -> FeatureVector:
