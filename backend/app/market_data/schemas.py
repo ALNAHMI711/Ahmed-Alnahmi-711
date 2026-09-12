@@ -62,7 +62,15 @@ class KlineRecord(BaseModel):
     is_closed: bool = False
     source: str = Field(default="binance", min_length=1, max_length=64)
 
-    @field_validator("open", "high", "low", "close", "volume", "quote_volume", mode="before")
+    @field_validator(
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_volume",
+        mode="before",
+    )
     @classmethod
     def require_decimal(cls, value: object) -> Decimal:
         if not isinstance(value, Decimal) or not value.is_finite():

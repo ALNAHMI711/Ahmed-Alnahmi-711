@@ -4,7 +4,11 @@ from datetime import datetime, timezone
 from .schemas import INTERVAL_MS, KlineInterval, KlineRecord, utc_now_ms
 
 
-def validate_kline(kline: KlineRecord, *, now: datetime | int | None = None) -> KlineRecord:
+def validate_kline(
+    kline: KlineRecord,
+    *,
+    now: datetime | int | None = None,
+) -> KlineRecord:
     """Validate temporal alignment and OHLCV invariants; return the unchanged record."""
     duration = INTERVAL_MS[kline.interval]
 
@@ -28,7 +32,9 @@ def validate_kline(kline: KlineRecord, *, now: datetime | int | None = None) -> 
     elif kline.open_time % duration != 0:
         raise ValueError("open_time is not aligned to the interval boundary")
 
-    reference_now = now if isinstance(now, int) else utc_now_ms(now)
+    reference_now = (
+        now if isinstance(now, int) else utc_now_ms(now)
+    )
     if kline.open_time > reference_now:
         raise ValueError("future candles are not accepted")
 
