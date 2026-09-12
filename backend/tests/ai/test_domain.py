@@ -40,7 +40,7 @@ def output() -> ModelOutput:
 def test_feature_vector_is_strict_decimal_first_and_immutable() -> None:
     value = vector()
     assert value.features[0].value == Decimal("52.125")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         value.as_of_ms = 1
     with pytest.raises(ValidationError):
         Feature(name="rsi", value=0.5)
@@ -103,7 +103,7 @@ def test_decision_and_risk_decision_are_immutable_and_forbid_unknown_fields() ->
     )
     assert decision.signal is Signal.SELL
     assert risk.max_notional == Decimal("1000.00")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         risk.approved = False
     with pytest.raises(ValidationError):
         Decision(
