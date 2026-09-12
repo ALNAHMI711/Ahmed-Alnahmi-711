@@ -1,8 +1,9 @@
-from modules.alpha.regime_detector import detect,MarketRegime
-from modules.alpha.strategy_ranking import StrategyEvidence,rank
-from modules.alpha.position_sizing import SizingRequest,size
-from modules.alpha.performance_monitor import monitor,PerformancePolicy
+from modules.alpha.performance_monitor import PerformancePolicy, monitor
+from modules.alpha.position_sizing import SizingRequest, size
+from modules.alpha.regime_detector import MarketRegime, detect
+from modules.alpha.strategy_ranking import StrategyEvidence, rank
 from risk.engine import RiskLimits
+
 L=RiskLimits(100,.2,3,1000,500,3,.002,.003)
 def test_regime_and_rank():
  r=detect([100+i for i in range(20)],[10]*20); assert r.regime==MarketRegime.TRENDING_UP

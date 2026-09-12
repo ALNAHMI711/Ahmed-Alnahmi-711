@@ -1,15 +1,24 @@
 """Production boundary for manual orders; secrets never leave this module."""
+
 from decimal import Decimal
+
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
+
 from backend.app.adapters.base import Market
 from backend.app.adapters.binance import BinanceAdapter
 from backend.app.database import ApiAccount, ApiAccountOwner, KillSwitch
-from backend.app.security.crypto import SecretCipher
 from backend.app.execution.models import ExchangeOrder
+from backend.app.execution.orders import (
+    ExecutionRejected,
+    ExecutionService,
+    OrderIntent,
+)
 from backend.app.execution.repositories import OrderRepository
-from backend.app.execution.orders import ExecutionService, OrderIntent, ExecutionRejected
+from backend.app.security.crypto import SecretCipher
 from risk.engine import RiskLimits, evaluate
+
 
 async def submit_manual(db, user, body):
     account=db.get(ApiAccount, body.account_id)
@@ -27,5 +36,5 @@ async def submit_manual(db, user, body):
     OrderRepository(db).create_once(order); db.commit()
     try: remote=await ExecutionService().submit(adapter,OrderIntent(body.account_id,body.client_request_id,body.symbol,body.side,Decimal(str(body.quantity)),body.order_type),decision,confirmed=body.confirmed,kill_switch=False)
     except ExecutionRejected as error: order.status='REJECTED'; db.commit(); raise HTTPException(409,str(error))
-    except Exception as error: db.rollback(); raise HTTPException(502,str(error))
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError) as error: db.rollback(); raise HTTPException(502,str(error))
     order.exchange_order_id=str(remote.get('orderId')); order.status=remote['status']; db.commit(); return {'id':order.id,'status':order.status,'exchange_order_id':order.exchange_order_id}

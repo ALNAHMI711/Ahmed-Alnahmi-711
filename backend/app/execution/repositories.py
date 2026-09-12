@@ -1,10 +1,14 @@
 """Repository layer: all writes are transactional and duplicate-safe."""
+
 from datetime import datetime
 from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from .models import Position, ProjectionEvent, Trade
+
 
 class TradeRepository:
     def __init__(self, db: Session): self.db = db
@@ -33,6 +37,12 @@ class ProjectionRepository:
             result = Position(account_id=account_id, market=market, symbol=symbol)
             self.db.add(result); self.db.flush()
         return result
+    def fills_for_position(self, account_id: str, market: str, symbol: str, current: Trade | None = None) -> list[Trade]:
+        fills = list(self.db.scalars(select(Trade).where(Trade.account_id == account_id, Trade.market == market, Trade.symbol == symbol).order_by(Trade.occurred_at, Trade.exchange_trade_id)))
+        if current is not None and all(item.exchange_trade_id != current.exchange_trade_id for item in fills):
+            fills.append(current)
+            fills.sort(key=lambda item: (item.occurred_at, item.exchange_trade_id))
+        return fills
     def add_funding_once(self, account_id: str, market: str, symbol: str, event_id: str, amount: Decimal, occurred_at: datetime) -> bool:
         if not self.claim_event(f"funding:{account_id}:{market}:{event_id}", account_id, "funding", occurred_at): return False
         position = self.get_or_create_position(account_id, market, symbol)
@@ -42,7 +52,7 @@ class ProjectionRepository:
         return True
 
 class OrderRepository:
-    VALID = frozenset({"NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED"})
+    VALID = frozenset({"NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED", "UNKNOWN"})
     def __init__(self, db: Session): self.db = db
     def by_request(self, account_id: str, client_request_id: str):
         from .models import ExchangeOrder
@@ -59,7 +69,7 @@ class OrderRepository:
 
 class ConditionalOrderRepository:
     KINDS=frozenset({'TP1','TP2','TP3','TP4','TP5','TP6','TP7','SL','PARTIAL_CLOSE','BREAK_EVEN','TRAILING'})
-    STATES=frozenset({'ACTIVE','SUBMITTED','FILLED','CANCELED','REJECTED','EXPIRED'})
+    STATES=frozenset({'ACTIVE','SUBMITTED','PARTIALLY_FILLED','FILLED','CANCELED','REJECTED','EXPIRED','UNKNOWN'})
     def __init__(self,db): self.db=db
     def create_once(self,plan):
         if plan.kind not in self.KINDS or plan.quantity <= 0: raise ValueError('invalid conditional order')

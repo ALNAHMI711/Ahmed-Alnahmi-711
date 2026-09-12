@@ -1,13 +1,20 @@
 """Mandatory risk/confirmation gate for real Binance order submissions."""
+
 from dataclasses import dataclass
 from decimal import Decimal
+
 from backend.app.adapters.binance import BinanceAdapter
 from risk.engine import RiskDecision
+
 
 @dataclass(frozen=True)
 class OrderIntent:
     account_id: str; client_request_id: str; symbol: str; side: str; quantity: Decimal; order_type: str = "MARKET"; price: Decimal | None = None; reduce_only: bool = False
+
+
 class ExecutionRejected(RuntimeError): pass
+
+
 class ExecutionService:
     async def submit(self, adapter: BinanceAdapter, intent: OrderIntent, decision: RiskDecision, *, confirmed: bool, kill_switch: bool) -> dict:
         if kill_switch: raise ExecutionRejected("kill switch enabled")

@@ -1,16 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+
+from backend.app.adapters.binance import ExchangeFill, ExchangePosition, FundingPayment
 from backend.app.database import ApiAccount, Base
 from backend.app.execution.models import Position, Trade
 from backend.app.execution.projections import apply_fill
 from backend.app.execution.reconciliation import ReconciliationWorker
 from backend.app.execution.repositories import ProjectionRepository, TradeRepository
-from backend.app.adapters.binance import ExchangeFill, ExchangePosition, FundingPayment
 
 D = Decimal
-NOW = datetime(2026, 1, 1)
+NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
 def setup():
     engine = create_engine("sqlite:///:memory:"); Base.metadata.create_all(engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
@@ -26,9 +28,8 @@ def test_projection_partial_close_reverse_and_full_close():
         for item in (fill("1", "BUY", "2", "100", "1"), fill("2", "BUY", "1", "110", "1"), fill("3", "SELL", "1", "120", "1"), fill("4", "SELL", "3", "90", "1"), fill("5", "BUY", "1", "80", "1")):
             assert apply_fill(repo, item) is not None
         position = repo.position("account", "usds_m", "BTCUSDT")
-        assert position.quantity == 0 and position.state == "CLOSED"
-        # Gross closes: 13.333... + 80 - 10 = 83.333... after five fees.
-        assert position.realized_pnl == D("83.333333333333333333")
+        assert position.quantity == D("0") and position.state == "CLOSED"
+        assert position.realized_pnl == D("-5")
         assert position.fees == D("5")
         db.commit()
 def test_trade_repository_duplicate_fill_is_not_inserted():
@@ -48,7 +49,7 @@ def test_reconciliation_is_restart_idempotent_and_uses_exchange_snapshot():
     with sessions() as db:
         assert len(db.scalars(select(Trade)).all()) == 1
         position = db.scalar(select(Position)); assert position.quantity == D("2") and position.unrealized_pnl == D("50")
-        assert position.funding == D("-3") and position.realized_pnl == D("-5") # funding plus one fill fee
+        assert position.funding == D("-3") and position.realized_pnl == D("-5")
 def test_reconciliation_publishes_only_after_commit():
     sessions = setup(); events = []
     async def publish(event_type, payload):

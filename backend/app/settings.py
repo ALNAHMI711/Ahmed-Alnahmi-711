@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -11,5 +12,6 @@ class Settings:
     admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
     api_encryption_key: str = os.getenv("API_ENCRYPTION_KEY", "")
     trusted_outbound_ips: tuple[str, ...] = tuple(filter(None, os.getenv("TRUSTED_OUTBOUND_IPS", "").split(",")))
+
 
 settings = Settings()

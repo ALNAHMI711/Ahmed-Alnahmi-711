@@ -1,8 +1,13 @@
 """Signals are normalized into the same owned-account manual execution boundary."""
+
 from types import SimpleNamespace
-from signals.parser import parse
-from .manual import submit_manual
+
 from backend.app.database import AuditLog
+from signals.parser import parse
+
+from .manual import submit_manual
+
+
 async def submit_signal(db, user, *, account_id: str, client_request_id: str, message: str, confirmed: bool, policy_enabled: bool, risk: dict):
     signal=parse(message)
     if not policy_enabled: raise ValueError('signal auto-execution is disabled')
