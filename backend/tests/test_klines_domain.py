@@ -33,7 +33,9 @@ def candle(
         symbol="btcusdt",
         interval=KlineInterval.M1,
         open_time=open_time,
-        close_time=close_time if close_time is not None else open_time + 59_999,
+        close_time=(
+            close_time if close_time is not None else open_time + 59_999
+        ),
         open=open_price,
         high=high,
         low=low,
@@ -79,9 +81,7 @@ def test_interval_alignment_is_required() -> None:
 
 
 def test_future_candle_is_rejected() -> None:
-    future_open = int(
-        (NOW + timedelta(minutes=1)).timestamp() * 1000
-    )
+    future_open = int((NOW + timedelta(minutes=1)).timestamp() * 1000)
     with pytest.raises(ValueError, match="future"):
         validate_kline(candle(open_time=future_open), now=NOW)
 
