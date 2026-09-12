@@ -164,3 +164,6 @@ def test_registry_and_policy_contracts_accept_only_domain_types() -> None:
     decision = Policy().decide(result)
     assert decision.signal is Signal.BUY
     assert decision.confidence == Decimal("0.875")
+
+
+# Keep Ruff's first-party import grouping explicit for the CI audit.
